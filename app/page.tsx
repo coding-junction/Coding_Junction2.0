@@ -1,9 +1,12 @@
+import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
+import Landing from "./Landing/page";
+
 
 
 export default function Home() {
   return (
     <div>
-      <h1>Welcome to Coding Junction Club</h1>
+      <Landing/>
     </div>
   );
 }
