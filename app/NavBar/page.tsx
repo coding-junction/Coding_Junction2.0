@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Home, User, AppWindowIcon, LogInIcon } from "lucide-react"
+import { Home, FileText, CreditCard, Info, User, AppWindowIcon, LogInIcon } from "lucide-react"
 import { AnimeNavBar } from "@/components/ui/anime-navbar"
 
 const items = [
