@@ -1,0 +1,330 @@
+{
+  "genArray": [
+    {
+      "key": 0,
+      "name": "President",
+      "des": "",
+      "href":"#"
+    },
+    {
+      "key": 1,
+      "name": "Gen 1",
+      "des": "The Most earliest batch that layed the foundation of the club",
+      "href":"#"
+    },
+    {
+      "key": 2,
+      "name": "Gen 2",
+      "des": "2nd Generation build our club Strong and Secure",
+      "href":"#"
+    },
+    {
+      "key": 3,
+      "name": "Gen 3",
+      "des": "3rd Generation who will grow our club positivly",
+      "link":"#"
+    }
+  ],
+  "teamArray": [
+    {
+      "key": 1,
+      "gen": "p",
+      "name": "Raja Bhandari",
+      "role": "Android Developer",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1699949947/MEM/WhatsApp_Image_2023-11-14_at_12.31.41_6bf42805_vye8ys.jpg",
+      "li": "https://www.linkedin.com/in/raja-bhandari/",
+      "gh": "https://github.com/IamRaja007",
+      "tw": "https://www.facebook.com/raja.bhandari.007/",
+      "ig": "https://www.instagram.com/i_m_raja88/",
+      "em": "#"
+    },
+    {
+      "key": 2,
+      "gen": "1",
+      "name": "Aditya Gupta ",
+      "role": "",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1699949948/MEM/WhatsApp_Image_2023-11-14_at_12.45.18_c27ed285_xfnj10.jpg",
+      "li": "https://www.linkedin.com/in/aditya-gupta-036b1a211",
+      "gh": "https://github.com/Adi-1904",
+      "tw": "https://www.facebook.com/profile.php?id=100011467784285",
+      "ig": "https://instagram.com/aditya_gupta1904?igshid=Mmxrd2FpNXZkM2ky",
+      "em": "#"
+    },
+    {
+      "key": 3,
+      "gen": "1",
+      "name": "Saptyadeep Bhattacharjee ",
+      "role": "",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1699952531/MEM/WhatsApp_Image_2023-11-14_at_13.58.58_df9551ea_tbtsi0.jpg",
+      "li": "https://www.linkedin.com/in/saptyadeep-bhattacharjee-247a58202/",
+      "gh": "https://github.com/bsaptyadeep",
+      "tw": "#",
+      "ig": "https://www.instagram.com/saptyadeep/",
+      "em": "#"
+    },
+    {
+      "key": 4,
+      "gen": "1",
+      "name": "Sohom Chowdhury ",
+      "role": "",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1699949969/MEM/WhatsApp_Image_2023-11-14_at_12.47.46_198d0add_cw0sbs.jpg",
+      "li": "https://www.linkedin.com/in/sitsmesohom",
+      "gh": "https://github.com/Sitsmesohom",
+      "tw": "https://www.facebook.com/sitsmesohom",
+      "ig": "https://instagram.com/sitsme_sohom",
+      "em": "#"
+    },
+    {
+      "key": 5,
+      "gen": "p",
+      "name": "Arpita Kar",
+      "role": "Web Developer | Event Management",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1699949956/MEM/WhatsApp_Image_2023-11-14_at_13.17.29_cee43761_gicjlo.jpg",
+      "li": "https://www.linkedin.com/in/arpita-kar-120ab625b",
+      "gh": "https://github.com/arpitakar999",
+      "tw": "https://www.facebook.com/profile.php?id=100082072877383&mibextid=ViGcVu",
+      "ig": "https://instagram.com/artistic_mind1234?igshid=OGQ5ZDc2ODk2ZA==",
+      "em": "#"
+    },
+    {
+      "key": 6,
+      "gen": "2",
+      "name": "Aayush Chatterjee ",
+      "role": "Web Developer | Event Management",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1699949955/MEM/WhatsApp_Image_2023-11-14_at_13.25.04_2a6f38d0_oubolb.jpg",
+      "li": "https://www.linkedin.com/in/aayush-chatterjee-073077248",
+      "gh": "https://github.com/aayush8421",
+      "tw": "https://www.facebook.com/aayush1357",
+      "ig": "https://instagram.com/aayush__chatterjee",
+      "em": "#"
+    },
+    {
+      "key": 7,
+      "gen": "2",
+      "name": "Pranay Pal",
+      "role": "AI/ML | Web Developer",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1699949959/MEM/WhatsApp_Image_2023-11-14_at_13.41.39_b987ee8b_sql49p.jpg",
+      "li": "https://www.linkedin.com/in/pranaypal/",
+      "gh": "https://github.com/Pranay-Pal",
+      "tw": "https://www.facebook.com/profile.php?id=100072158786388",
+      "ig": "https://www.instagram.com/pny1cl/",
+      "em": "#"
+    },
+    {
+      "key": 8,
+      "gen": "p",
+      "name": "Ayush Jalan ",
+      "role": "C/C++ | Website Management",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1699949954/MEM/WhatsApp_Image_2023-11-14_at_12.25.21_11d63597_or02lk.jpg",
+      "li": "https://www.linkedin.com/in/ayush-jalan",
+      "gh": "https://github.com/The15thSin",
+      "tw": "https://www.facebook.com/ayush.jalan.376",
+      "ig": "https://instagram.com/ayush_404_not_found",
+      "em": "#"
+    },
+    {
+      "key": 9,
+      "gen": "2",
+      "name": "Dona Murmu ",
+      "role": "C/C++ | Website Management",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1699949949/MEM/WhatsApp_Image_2023-11-14_at_12.46.21_2bbbf7a0_tg6ixz.jpg",
+      "li": "https://www.linkedin.com/in/dona-murmu-733b9a187?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app",
+      "gh": "https://github.com/Dona4449",
+      "tw": "#",
+      "ig": "https://instagram.com/pickledchocolate?utm_source=qr&igshid=MThlNWY1MzQwNA==",
+      "em": "#"
+    },
+    {
+      "key": 10,
+      "gen": "2",
+      "name": "Souvik Sural ",
+      "role": "Web3 Developer | Event Management",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1699949950/MEM/WhatsApp_Image_2023-11-14_at_12.32.27_c62b847a_gmlazs.jpg",
+      "li": "https://www.linkedin.com/in/souvik-sural-1abba3227",
+      "gh": "https://github.com/Souvik34",
+      "tw": "#",
+      "ig": "https://instagram.com/souvik__38",
+      "em": "#"
+    },
+    {
+      "key": 11,
+      "gen": "2",
+      "name": "Biswarup Naha ",
+      "role": "AI/ML | Social Media",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1699949948/MEM/WhatsApp_Image_2023-11-14_at_12.39.29_e74f9acd_rfrda7.jpg",
+      "li": "https://www.linkedin.com/in/biswarup-naha-1a3aa4137/",
+      "gh": "https://github.com/biswarup-naha",
+      "tw": "https://www.facebook.com/maxres.2734",
+      "ig": "https://www.instagram.com/earthface.exe/",
+      "em": "#"
+    },
+    {
+      "key": 12,
+      "gen": "2",
+      "name": "Dipa Ghosh ",
+      "role": "AI/ML | Social Media",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1699949960/MEM/WhatsApp_Image_2023-11-14_at_13.27.44_d65b6a19_jvg4f5.jpg",
+      "li": "https://www.linkedin.com/in/dipa-ghosh-122041266?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app",
+      "gh": "https://github.com/dipa-ghosh11",
+      "tw": "https://www.facebook.com/profile.php?id=100071373083666&mibextid=ZbWKwL",
+      "ig": "https://instagram.com/ghoshdipamana?igshid=MXBzb2E0YWRiNGUxdw==",
+      "em": "#"
+    },
+    {
+      "key": 13,
+      "gen": "2",
+      "name": "Aayush Raj",
+      "role": "DSA | Event Management",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1699949968/MEM/WhatsApp_Image_2023-11-14_at_12.53.25_009cad12_ms9pts.jpg",
+      "li": "#",
+      "gh": "#",
+      "tw": "#",
+      "ig": "#",
+      "em": "#"
+    },
+    {
+      "key": 14,
+      "gen": 2,
+      "name": "Sourav Karmakar ",
+      "role": "Android Developer | Social Media",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1699952531/MEM/WhatsApp_Image_2023-11-14_at_14.28.40_8c0fad8c_v7fxap.jpg",
+      "li": "https://www.linkedin.com/in/sourav-karmakar-51654823b?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app",
+      "gh": "#",
+      "tw": "#",
+      "ig": "#",
+      "em": "#"
+    },
+    {
+      "key": 15,
+      "gen": "2",
+      "name": "Soumajith Das",
+      "role": "DSA | Social Media",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1699949954/MEM/WhatsApp_Image_2023-11-14_at_12.57.52_5bf69fc0_wksjfx.jpg",
+      "li": "#",
+      "gh": "#",
+      "tw": "#",
+      "ig": "#",
+      "em": "#"
+    },
+    {
+      "key": 23,
+      "gen": "2",
+      "name": "ADITI BHATTACHARYA",
+      "role": "C/C++ | EVENT MANAGEMENT",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1722956104/Aditi_h4tddl.jpg",
+      "li": "https://www.linkedin.com/in/aditi-bhattacharya-984886246?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app",
+      "gh": "https://github.com/Andromeda031202",
+      "tw": "#",
+      "ig": "https://www.instagram.com/the_messier_31?igsh=MTIzOWRjcnQyNTlyaQ==",
+      "em": "uit.it.t20213078@gmail.com"
+    },
+    {
+      "key": 16,
+      "gen": "3",
+      "name": "Ranadeb Saha",
+      "role": "C/C++ | Website Management",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1722956165/Ranadeb_zsjq4y.jpg",
+      "li": "https://www.linkedin.com/in/ranadeb-saha-6478ab1a1",
+      "gh": "https://github.com/ranadebsaha",
+      "tw": "https://twitter.com/RanadebSaha",
+      "ig": "https://www.instagram.com/ranadeb.saha/",
+      "em": "ranadebsaha@coding-junction.in"
+    },
+    {
+      "key": 17,
+      "gen": "3",
+      "name": "Aritra Konar",
+      "role": "Web3 Developer | Event Management",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1722949092/Aritra_skm0ym.jpg",
+      "li": "https://www.linkedin.com/in/aritra-konar03",
+      "gh": "https://github.com/Aritra203",
+      "tw": "https://x.com/aritrakonar03",
+      "ig": "#",
+      "em": "konararitra72@gmail.com"
+    },
+    {
+      "key": 18,
+      "gen": "3",
+      "name": "Krittika Biswas",
+      "role": "DSA | Website Management",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1722949439/Krittika_oyxjef.jpg",
+      "li": "https://www.linkedin.com/in/krittika-biswas-9a760b26b",
+      "gh": "https://github.com/krittikabiswas",
+      "tw": "https://x.com/KrittikaBi17142",
+      "ig": "#",
+      "em": "biswaskrittika4@gmail.com "
+    },
+    {
+      "key": 19,
+      "gen": "3",
+      "name": "Pratyay Sen",
+      "role": "DSA | Social Media",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1722948935/pratyay_fhbyb1.jpg",
+      "li": "https://www.linkedin.com/in/pratyay-sen-b908b924b?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app",
+      "gh": "https://github.com/pratyaysen",
+      "tw": "https://x.com/SenPratyay",
+      "ig": "https://www.instagram.com/sen_pratyay",
+      "em": "pratyaysen23@gmail.com"
+    },
+    {
+      "key": 20,
+      "gen": "3",
+      "name": "Sharanya Chowdhury",
+      "role": "Web Developer | Event Management",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1722949249/Sharanya_mndrwc.jpg",
+      "li": "https://www.linkedin.com/in/sharanya-chowdhury-102533247",
+      "gh": "https://github.com/Sharanya-up",
+      "tw": "#",
+      "ig": "https://www.instagram.com/ayo_chowdhury?igsh=ZWFsOGNsaDlvcm1l",
+      "em": "sharanyachowdhury30@gmail.com"
+    },
+    {
+      "key": 21,
+      "gen": "3",
+      "name": "Farhan Chowdhury",
+      "role": "Event Management",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1722956101/Farhan_xdsed1.jpg",
+      "li": "https://www.linkedin.com/in/farhan-chowdhury-101b25258?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app",
+      "gh": "https://github.com/Farhanbwn",
+      "tw": "https://x.com/Nishan_bwn",
+      "ig": "https://www.instagram.com/nishan.bwn?igsh=MWhjeGhqdWduYjFtZQ==",
+      "em": "farhanbwn2003@gmail.com"
+    },
+    {
+      "key": 22,
+      "gen": "3",
+      "name": "Aditya Chatterjee",
+      "role": "Web Developer | Event Management",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1722948922/Aditya_su4vs3.jpg",
+      "li": "https://www.linkedin.com/in/aditya-chatterjee-10990231a?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app",
+      "gh": "https://github.com/CodeClasmic",
+      "tw": "#",
+      "ig": "https://www.instagram.com/_joyboyy_?igsh=MWQzeTJsMm16b3F0aw==",
+      "em": "adityachatterjee386@gmail.com"
+    },
+    {
+      "key": 24,
+      "gen": "3",
+      "name": "Sekh Yajuddin",
+      "role": "Event Management",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1722956147/SekhYajuddin_frta9q.jpg",
+      "li": "https://www.linkedin.com/in/sekh-yajuddin-aa09ab26b/",
+      "gh": "https://github.com/sekhyajuddin",
+      "tw": "https://twitter.com/Sekh_Yajuddin",
+      "ig": "#",
+      "em": "sekhyajuddin@gmail.com"
+    },
+    {
+      "key": 25,
+      "gen": "3",
+      "name": "Rupam Ray Mandal",
+      "role": "Web Developer | Social Media",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1729623247/WhatsApp_Image_2024-10-22_at_17.12.37_zjrvtu.jpg",
+      "li": "https://www.linkedin.com/in/rupam-ray-mandal-a956ba27a?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app",
+      "gh": "https://github.com/xectier",
+      "tw": "https://x.com/xectire",
+      "ig": "https://www.instagram.com/r___u___p___a___m",
+      "em": "rupamfine@gmail.com"
+    }
+  ]
+}
