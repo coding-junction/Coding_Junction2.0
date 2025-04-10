@@ -1,11 +1,11 @@
 import { Feature } from "@/components/ui/feature-with-image-carousel";
 
-function About() {
+const About = () => {
   return (
     <div className="w-full">
       <Feature />
     </div>
   );
-}
+};
 
-export { About };
+export default About;
