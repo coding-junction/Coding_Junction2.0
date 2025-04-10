@@ -6,7 +6,14 @@ import { NavBar } from "../NavBar/page";
 import Overview from "../Overview/page";
 import { Testimonial } from "../Testimonial/page";
 import UpcomingEvent from "../UpcomingEvent/page";
-
+import {
+  ClerkProvider,
+  SignInButton,
+  SignUpButton,
+  SignedIn,
+  SignedOut,
+  UserButton,
+} from '@clerk/nextjs';
 
 
 
