@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { BackgroundGradient } from "@/components/ui/background-gradient";
-//import Image from "next/image";//
+import Image from "next/image";
 
 export function Event() {
   return (
