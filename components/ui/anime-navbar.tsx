@@ -32,20 +32,10 @@ export function AnimeNavBar({
   const [mounted, setMounted] = useState(false)
   const [hoveredTab, setHoveredTab] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<string>(defaultActive)
-  const [isMobile, setIsMobile] = useState(false)
 
   // Mounted Effect
   useEffect(() => {
     setMounted(true)
-    
-    // Responsive Design
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768)
-    }
-
-    handleResize()
-    window.addEventListener("resize", handleResize)
-    return () => window.removeEventListener("resize", handleResize)
   }, [])
 
   // Pathname Change Effect
