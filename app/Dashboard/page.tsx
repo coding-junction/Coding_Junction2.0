@@ -6,7 +6,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { SignedIn, UserButton } from "@clerk/nextjs";
 
-export function DashboardMain() {
+const DashboardMain = () => {
   const links = [
     {
       label: "Dashboard",
@@ -33,7 +33,7 @@ export function DashboardMain() {
       <Sidebar open={open} setOpen={setOpen}>
         <SidebarBody className="justify-between gap-10">
           <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
-            {open ? <Logo /> : <LogoIcon />}
+            {/*open ? <Logo /> : <LogoIcon /> */}
             <div className="mt-8 flex flex-col gap-2">
               {links.map((link, idx) => (
                 <SidebarLink key={idx} link={link} />
@@ -52,20 +52,20 @@ export function DashboardMain() {
   );
 }
 
-export const Logo = () => (
+{/*export const Logo = () => (
   <Link href="#" className="font-normal flex space-x-2 items-center text-sm text-black py-1 relative z-20">
     <div className="h-5 w-6 bg-black dark:bg-white rounded-lg" />
     <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="font-medium text-black dark:text-white whitespace-pre">
       Coding Junction
     </motion.span>
   </Link>
-);
+); */}
 
-export const LogoIcon = () => (
+{/*export const LogoIcon = () => (
   <Link href="#" className="font-normal flex space-x-2 items-center text-sm text-black py-1 relative z-20">
     <div className="h-5 w-6 bg-black dark:bg-white rounded-lg" />
   </Link>
-);
+); */}
 
 const Dashboard = () => (
   <div className="flex flex-1 p-4 md:p-8 bg-white dark:bg-neutral-900 h-full w-full">
@@ -87,3 +87,7 @@ const Dashboard = () => (
     </div>
   </div>
 );
+
+export default DashboardMain;
+export { DashboardMain };
+export { Dashboard };
