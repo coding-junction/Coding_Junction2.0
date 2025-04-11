@@ -45,7 +45,6 @@ const DashboardMain = () => {
           </div>
         </SidebarBody>
       </Sidebar>
-      <Dashboard />
     </div>
   );
 }
@@ -65,27 +64,25 @@ const DashboardMain = () => {
   </Link>
 ); */}
 
-const Dashboard = () => (
+{/*const Dashboard = () => (
   <div className="flex flex-1 p-4 md:p-8 bg-white dark:bg-neutral-900 h-full w-full">
     <div className="flex flex-col w-full h-full">
     <h1 className="text-base sm:text-lg md:text-4xl text-dark/40 mb-8 leading-relaxed font-light tracking-wide max-w-xl mx-auto px-4">Welcome to Coding Junction</h1>
       {/* Top Cards */}
-      <div className="flex gap-4 mb-4">
+      {/*<div className="flex gap-4 mb-4">
         {[...Array(4)].map((_, i) => (
           <div key={i} className="h-24 flex-1 rounded-lg bg-gray-200 dark:bg-neutral-800 animate-pulse" />
         ))}
       </div>
 
       {/* Bottom Grid */}
-      <div className="flex gap-4 flex-1">
+      {/*<div className="flex gap-4 flex-1">
         {[...Array(2)].map((_, i) => (
           <div key={i} className="h-full w-1/2 rounded-lg bg-gray-200 dark:bg-neutral-800 animate-pulse" />
         ))}
       </div>
     </div>
   </div>
-);
+); */}
 
 export default DashboardMain;
-export { DashboardMain };
-export { Dashboard };

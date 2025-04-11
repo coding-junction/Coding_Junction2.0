@@ -1,6 +1,6 @@
 "use client";
 import { ClerkProvider, SignedIn, SignedOut, SignIn } from '@clerk/nextjs';
-import { DashboardMain } from '../Dashboard/page';
+import DashboardMain  from '../Dashboard/page';
 
 export default function User() {
 
