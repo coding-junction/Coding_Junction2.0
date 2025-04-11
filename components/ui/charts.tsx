@@ -1,6 +1,11 @@
 import { LineChart as ReLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
-export function LineChart({ data }: { data: any[] }) {
+type LineChartData = {
+  name: string;
+  value: number;
+};
+
+export function LineChart({ data }: { data: LineChartData[] }) {
   return (
     <ResponsiveContainer width="100%" height={300}>
       <ReLineChart data={data}>

@@ -37,7 +37,7 @@ export function AnimeNavBar({
   // Mounted Effect
   useEffect(() => {
     setMounted(true)
-    
+    isMobile
     // Responsive Design
     const handleResize = () => {
       setIsMobile(window.innerWidth < 768)
