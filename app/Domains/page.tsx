@@ -4,7 +4,7 @@ import { Box, Sparkles, AppWindowIcon, Code } from "lucide-react";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
 import { cn } from "@/lib/utils";
 
-export function Domains() {
+const Domains = () => {
   return (
     <section className="w-full px-4 md:px-8 lg:px-16 xl:px-20 py-8">
       <h2 className="text-center text-3xl md:text-4xl font-bold mb-6 text-foreground dark:text-white">
@@ -84,3 +84,5 @@ const GridItem = ({ area, icon, title, description }: GridItemProps) => {
     </li>
   );
 };
+
+export default Domains;
