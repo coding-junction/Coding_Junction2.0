@@ -1,6 +1,6 @@
 "use client";
 
-import { Box, Lock, Search, Settings, Sparkles, AppWindowIcon, Code } from "lucide-react";
+import { Box, Sparkles, AppWindowIcon, Code } from "lucide-react";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
 import { cn } from "@/lib/utils";
 

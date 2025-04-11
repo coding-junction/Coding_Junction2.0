@@ -1,9 +1,6 @@
 "use client";
-import { ClerkProvider, SignedIn, SignedOut, SignIn, SignInButton, UserButton } from '@clerk/nextjs';
+import { ClerkProvider, SignedIn, SignedOut, SignIn } from '@clerk/nextjs';
 import { DashboardMain } from '../Dashboard/page';
-import { auth, currentUser } from '@clerk/nextjs/server'
-import { useEffect } from 'react';
-import { Router } from 'next/router';
 
 export default function User() {
 

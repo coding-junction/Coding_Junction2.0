@@ -6,22 +6,10 @@ import { NavBar } from "../NavBar/page";
 import Overview from "../Overview/page";
 import { Testimonial } from "../Testimonial/page";
 import UpcomingEvent from "../UpcomingEvent/page";
-import {
-  ClerkProvider,
-  SignInButton,
-  SignUpButton,
-  SignedIn,
-  SignedOut,
-  UserButton,
-} from '@clerk/nextjs';
-
-
-
 
 export default function Landing() {
   return (
     <div>
-      
         <NavBar />
         <Header />
         <UpcomingEvent />
@@ -30,7 +18,6 @@ export default function Landing() {
         <Testimonial/>
         <About/>
         <Footer />
-        
     </div>
   );
 }

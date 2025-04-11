@@ -27,28 +27,15 @@ export function AnimeNavBar({
 }: NavBarProps) {
   const router = useRouter()
   const pathname = usePathname()
-  
-  // State Management
+
   const [mounted, setMounted] = useState(false)
   const [hoveredTab, setHoveredTab] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<string>(defaultActive)
-  const [isMobile, setIsMobile] = useState(false)
 
-  // Mounted Effect
   useEffect(() => {
     setMounted(true)
-    
-    // Responsive Design
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768)
-    }
-
-    handleResize()
-    window.addEventListener("resize", handleResize)
-    return () => window.removeEventListener("resize", handleResize)
   }, [])
 
-  // Pathname Change Effect
   useEffect(() => {
     const currentItem = items.find(item => item.url === pathname)
     if (currentItem) {
@@ -56,10 +43,8 @@ export function AnimeNavBar({
     }
   }, [pathname, items])
 
-  // Prevent rendering before client-side mount
   if (!mounted) return null
 
-  // Navigation Handler
   const handleNavigation = (item: NavItem) => {
     setActiveTab(item.name)
     router.push(item.url)
@@ -114,12 +99,9 @@ export function AnimeNavBar({
                     <div className="absolute inset-[-4px] bg-primary/20 rounded-full blur-xl" />
                     <div className="absolute inset-[-8px] bg-primary/15 rounded-full blur-2xl" />
                     <div className="absolute inset-[-12px] bg-primary/5 rounded-full blur-3xl" />
-                    
                     <div 
                       className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/20 to-primary/0"
-                      style={{
-                        animation: "shine 3s ease-in-out infinite"
-                      }}
+                      style={{ animation: "shine 3s ease-in-out infinite" }}
                     />
                   </motion.div>
                 )}
@@ -142,7 +124,7 @@ export function AnimeNavBar({
                 >
                   <Icon size={18} strokeWidth={2.5} />
                 </motion.span>
-          
+
                 {/* Hover Effect */}
                 <AnimatePresence>
                   {isHovered && !isActive && (
@@ -174,10 +156,7 @@ export function AnimeNavBar({
                           hoveredTab ? {
                             scale: [1, 1.1, 1],
                             rotate: [0, -5, 5, 0],
-                            transition: {
-                              duration: 0.5,
-                              ease: "easeInOut"
-                            }
+                            transition: { duration: 0.5, ease: "easeInOut" }
                           } : {
                             y: [0, -3, 0],
                             transition: {
@@ -188,7 +167,7 @@ export function AnimeNavBar({
                           }
                         }
                       >
-                        {/* Mascot Eyes */}
+                        {/* Eyes */}
                         <motion.div 
                           className="absolute w-2 h-2 bg-black rounded-full"
                           animate={
@@ -216,38 +195,28 @@ export function AnimeNavBar({
                           style={{ right: '25%', top: '40%' }}
                         />
 
-                        {/* Mascot Blush */}
+                        {/* Blush */}
                         <motion.div 
                           className="absolute w-2 h-1.5 bg-pink-300 rounded-full"
-                          animate={{
-                            opacity: hoveredTab ? 0.8 : 0.6
-                          }}
+                          animate={{ opacity: hoveredTab ? 0.8 : 0.6 }}
                           style={{ left: '15%', top: '55%' }}
                         />
                         <motion.div 
                           className="absolute w-2 h-1.5 bg-pink-300 rounded-full"
-                          animate={{
-                            opacity: hoveredTab ? 0.8 : 0.6
-                          }}
+                          animate={{ opacity: hoveredTab ? 0.8 : 0.6 }}
                           style={{ right: '15%', top: '55%' }}
                         />
-                        
-                        {/* Mascot Mouth */}
+
+                        {/* Mouth */}
                         <motion.div 
                           className="absolute w-4 h-2 border-b-2 border-black rounded-full"
                           animate={
-                            hoveredTab ? {
-                              scaleY: 1.5,
-                              y: -1
-                            } : {
-                              scaleY: 1,
-                              y: 0
-                            }
+                            hoveredTab ? { scaleY: 1.5, y: -1 } : { scaleY: 1, y: 0 }
                           }
                           style={{ left: '30%', top: '60%' }}
                         />
 
-                        {/* Sparkle Effects */}
+                        {/* Sparkles */}
                         <AnimatePresence>
                           {hoveredTab && (
                             <>
@@ -273,7 +242,7 @@ export function AnimeNavBar({
                         </AnimatePresence>
                       </motion.div>
 
-                      {/* Mascot Base */}
+                      {/* Base */}
                       <motion.div
                         className="absolute -bottom-1 left-1/2 w-4 h-4 -translate-x-1/2"
                         animate={
