@@ -2,8 +2,6 @@
 import React, { useState } from "react";
 import { Sidebar, SidebarBody, SidebarLink } from "@/components/ui/sidebar";
 import { LayoutDashboard, UserCog, Settings } from "lucide-react";
-import Link from "next/link";
-import { motion } from "framer-motion";
 import { SignedIn, UserButton } from "@clerk/nextjs";
 
 const DashboardMain = () => {
