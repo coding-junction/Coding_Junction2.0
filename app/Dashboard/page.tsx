@@ -6,7 +6,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { SignedIn, UserButton } from "@clerk/nextjs";
 
-export function DashboardMain() {
+const Dashboard = () => {
   const links = [
     {
       label: "Dashboard",
@@ -47,7 +47,7 @@ export function DashboardMain() {
           </div>
         </SidebarBody>
       </Sidebar>
-      <Dashboard />
+      <DashboardContent />
     </div>
   );
 }
@@ -67,7 +67,7 @@ export const LogoIcon = () => (
   </Link>
 );
 
-const Dashboard = () => (
+const DashboardContent = () => (
   <div className="flex flex-1 p-4 md:p-8 bg-white dark:bg-neutral-900 h-full w-full">
     <div className="flex flex-col w-full h-full">
     <h1 className="text-base sm:text-lg md:text-4xl text-dark/40 mb-8 leading-relaxed font-light tracking-wide max-w-xl mx-auto px-4">Welcome to Coding Junction</h1>
@@ -87,3 +87,5 @@ const Dashboard = () => (
     </div>
   </div>
 );
+
+export default Dashboard;
