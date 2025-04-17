@@ -1,6 +1,6 @@
 import About from "../About/page";
 import Domains from "../Domains/page";
-import { Footer } from "../Footer/page";
+import Footer from "../Footer/page";
 import { Header } from "../Header/page";
 import { NavBar } from "../NavBar/page";
 import Overview from "../Overview/page";
