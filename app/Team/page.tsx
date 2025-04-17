@@ -15,7 +15,7 @@ import { TwitterLogoIcon, LinkedInLogoIcon, GitHubLogoIcon,InstagramLogoIcon } f
 import Footer from "../Footer/page";
 import NavBar from "../NavBar/page";
 
-export default function Team() {
+const Team = () => {
   const teamArray = json.teamArray;
   
   const Gen = [
@@ -185,3 +185,5 @@ export const Logo = () => (
     <span className="whitespace-pre">Coding Junction</span>
   </Link>
 );
+
+export default Team;
