@@ -1,11 +1,11 @@
 import { Testimonials } from "@/components/ui/testimonials";
 
-function Testimonial() {
+const Testimonial = () => {
   return (
     <div className="block">
       <Testimonials />
     </div>
   );
-}
+};
 
-export { Testimonial };
+export default Testimonial;

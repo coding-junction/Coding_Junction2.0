@@ -4,7 +4,7 @@ import Footer from "../Footer/page";
 import Header from "../Header/page";
 import NavBar from "../NavBar/page";
 import Overview from "../Overview/page";
-import { Testimonial } from "../Testimonial/page";
+import Testimonial from "../Testimonial/page";
 import UpcomingEvent from "../UpcomingEvent/page";
 
 export default function Landing() {
