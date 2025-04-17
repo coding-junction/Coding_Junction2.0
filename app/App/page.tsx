@@ -1,7 +1,7 @@
 import React from 'react';
 import { Download, Smartphone, Star, Shield } from 'lucide-react';
-import { Footer } from '../Footer/page';
-import { NavBar } from '../NavBar/page';
+import Footer from '../Footer/page';
+import NavBar from '../NavBar/page';
 
 const App = () => {
   return (

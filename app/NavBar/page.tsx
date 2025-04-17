@@ -30,6 +30,8 @@ const items = [
   },
 ]
 
-export function NavBar() {
+const NavBar = () => {
   return <AnimeNavBar items={items} defaultActive="Home" />
-}
+};
+
+export default NavBar
