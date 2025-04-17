@@ -1,9 +1,11 @@
-import { Event } from "./Event/page";
+import Event from "./Event/page";
 
-export default function UpcomingEvent() {
+const UpcomingEvent = () => {
   return (
     <div>
       <Event/>
     </div>
   );
 }
+
+export default UpcomingEvent;

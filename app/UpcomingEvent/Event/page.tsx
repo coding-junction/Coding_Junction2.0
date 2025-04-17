@@ -2,7 +2,7 @@
 import React from "react";
 import { BackgroundGradient } from "@/components/ui/background-gradient";
 
-export function Event() {
+const Event = () => {
   return (
     <section className="w-full px-4 md:px-8 lg:px-16 xl:px-20 py-8 text-center">
       <h2 className="text-3xl md:text-4xl font-bold mb-6 text-foreground dark:text-white">
@@ -30,4 +30,6 @@ export function Event() {
       </div>
     </section>
   );
-}
+};
+
+export default Event;
