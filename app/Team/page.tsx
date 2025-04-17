@@ -12,7 +12,7 @@ import json from "./team.json";
 import { Button } from "@/components/ui/button";
 import { Mail } from "lucide-react";
 import { TwitterLogoIcon, LinkedInLogoIcon, GitHubLogoIcon,InstagramLogoIcon } from "@radix-ui/react-icons";
-import { Footer } from "../Footer/page";
+import Footer from "../Footer/page";
 import { NavBar } from "../NavBar/page";
 
 export default function Team() {
