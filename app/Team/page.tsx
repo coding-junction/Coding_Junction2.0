@@ -34,7 +34,7 @@ const Team = () => {
       {/* Mobile Header with Generations Dropdown */}
       <div className="md:hidden sticky top-0 z-50 bg-white dark:bg-neutral-900 shadow-sm">
         <div className="flex justify-between items-center p-4">
-          <Logo />
+          {/* <Logo /> */}
           <Dialog>
             <DialogTrigger asChild>
               <Button variant="outline" size="icon">
@@ -67,7 +67,7 @@ const Team = () => {
       <div className="flex flex-1">
         {/* Desktop Sidebar */}
         <div className="hidden md:flex w-64 bg-white dark:bg-neutral-900 p-6 flex-col border-r dark:border-neutral-700">
-          <Logo />
+          {/* <Logo /> */}
           <div className="mt-8 space-y-2">
             {Gen.map((gen) => (
               <Button 
@@ -179,11 +179,11 @@ const Team = () => {
   );
 }
 
-export const Logo = () => (
-  <Link href="#" className="flex space-x-2 items-center text-lg font-bold text-black dark:text-white">
-    <div className="h-6 w-7 bg-black dark:bg-white rounded-lg" />
-    <span className="whitespace-pre">Coding Junction</span>
-  </Link>
-);
+// export const Logo = () => (
+//   <Link href="#" className="flex space-x-2 items-center text-lg font-bold text-black dark:text-white">
+//     <div className="h-6 w-7 bg-black dark:bg-white rounded-lg" />
+//     <span className="whitespace-pre">Coding Junction</span>
+//   </Link>
+// );
 
 export default Team;
