@@ -1,12 +1,12 @@
 "use client";
 import React, { useState } from "react";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogTrigger, 
-  DialogTitle 
-} from "@/components/ui/dialog";
-import { Menu, ChevronLeft, ChevronRight } from "lucide-react";
+// import { 
+//   Dialog, 
+//   DialogContent, 
+//   DialogTrigger, 
+//   DialogTitle 
+// } from "@/components/ui/dialog";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import json from "./team.json";
