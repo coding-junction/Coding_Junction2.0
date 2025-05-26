@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Home, User, AppWindowIcon, LogInIcon } from "lucide-react"
+import { Home, User, AppWindowIcon, LogInIcon, ImageIcon } from "lucide-react"
 import { AnimeNavBar } from "@/components/ui/anime-navbar"
 
 const items = [
@@ -22,7 +22,14 @@ const items = [
     url: "/App",
     href: "#",
     icon: AppWindowIcon,
-  },{
+  },
+  {
+    name: "Gallery",
+    url: "/Gallery",
+    href: "#",
+    icon: ImageIcon,
+  },
+  {
     name: "Login",
     url: "/sign-in",
     href: "#",
