@@ -7,6 +7,12 @@
       "href":"#"
     },
     {
+      "key": 4,
+      "name": "Alumni",
+      "des": "",
+      "href":"#"
+    },
+    {
       "key": 1,
       "name": "Gen 1",
       "des": "The Most earliest batch that layed the foundation of the club",
@@ -28,7 +34,7 @@
   "teamArray": [
     {
       "key": 1,
-      "gen": "p",
+      "gen": "1",
       "name": "Raja Bhandari",
       "role": "Android Developer",
       "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1699949947/MEM/WhatsApp_Image_2023-11-14_at_12.31.41_6bf42805_vye8ys.jpg",
@@ -76,7 +82,7 @@
     },
     {
       "key": 5,
-      "gen": "p",
+      "gen": "2",
       "name": "Arpita Kar",
       "role": "Web Developer | Event Management",
       "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1699949956/MEM/WhatsApp_Image_2023-11-14_at_13.17.29_cee43761_gicjlo.jpg",
@@ -112,7 +118,7 @@
     },
     {
       "key": 8,
-      "gen": "p",
+      "gen": "2",
       "name": "Ayush Jalan ",
       "role": "C/C++ | Website Management",
       "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1699949954/MEM/WhatsApp_Image_2023-11-14_at_12.25.21_11d63597_or02lk.jpg",
@@ -325,6 +331,78 @@
       "tw": "https://x.com/xectire",
       "ig": "https://www.instagram.com/r___u___p___a___m",
       "em": "rupamfine@gmail.com"
+    },
+    {
+      "key": 26,
+      "gen": "p",
+      "name": "Aritra Konar",
+      "role": "Web3 Developer | Event Management",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1722949092/Aritra_skm0ym.jpg",
+      "li": "https://www.linkedin.com/in/aritra-konar03",
+      "gh": "https://github.com/Aritra203",
+      "tw": "https://x.com/aritrakonar03",
+      "ig": "#",
+      "em": "konararitra72@gmail.com"
+    },
+    {
+      "key": 27,
+      "gen": "p",
+      "name": "Krittika Biswas",
+      "role": "DSA | Website Management",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1722949439/Krittika_oyxjef.jpg",
+      "li": "https://www.linkedin.com/in/krittika-biswas-9a760b26b",
+      "gh": "https://github.com/krittikabiswas",
+      "tw": "https://x.com/KrittikaBi17142",
+      "ig": "#",
+      "em": "biswaskrittika4@gmail.com "
+    },
+    {
+      "key": 28,
+      "gen": "a",
+      "name": "Raja Bhandari",
+      "role": "Android Developer",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1699949947/MEM/WhatsApp_Image_2023-11-14_at_12.31.41_6bf42805_vye8ys.jpg",
+      "li": "https://www.linkedin.com/in/raja-bhandari/",
+      "gh": "https://github.com/IamRaja007",
+      "tw": "https://www.facebook.com/raja.bhandari.007/",
+      "ig": "https://www.instagram.com/i_m_raja88/",
+      "em": "#"
+    },
+    {
+      "key": 29,
+      "gen": "a",
+      "name": "Aditya Gupta ",
+      "role": "",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1699949948/MEM/WhatsApp_Image_2023-11-14_at_12.45.18_c27ed285_xfnj10.jpg",
+      "li": "https://www.linkedin.com/in/aditya-gupta-036b1a211",
+      "gh": "https://github.com/Adi-1904",
+      "tw": "https://www.facebook.com/profile.php?id=100011467784285",
+      "ig": "https://instagram.com/aditya_gupta1904?igshid=Mmxrd2FpNXZkM2ky",
+      "em": "#"
+    },
+    {
+      "key": 30,
+      "gen": "a",
+      "name": "Saptyadeep Bhattacharjee ",
+      "role": "",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1699952531/MEM/WhatsApp_Image_2023-11-14_at_13.58.58_df9551ea_tbtsi0.jpg",
+      "li": "https://www.linkedin.com/in/saptyadeep-bhattacharjee-247a58202/",
+      "gh": "https://github.com/bsaptyadeep",
+      "tw": "#",
+      "ig": "https://www.instagram.com/saptyadeep/",
+      "em": "#"
+    },
+    {
+      "key": 31,
+      "gen": "a",
+      "name": "Sohom Chowdhury ",
+      "role": "",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1699949969/MEM/WhatsApp_Image_2023-11-14_at_12.47.46_198d0add_cw0sbs.jpg",
+      "li": "https://www.linkedin.com/in/sitsmesohom",
+      "gh": "https://github.com/Sitsmesohom",
+      "tw": "https://www.facebook.com/sitsmesohom",
+      "ig": "https://instagram.com/sitsme_sohom",
+      "em": "#"
     }
   ]
 }
