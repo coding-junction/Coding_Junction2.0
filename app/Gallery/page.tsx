@@ -31,7 +31,6 @@ const getImageWidth = () => {
 const Gallery = () => {
   const controls = useAnimation();
   const [isPaused, setIsPaused] = useState(false);
-<<<<<<< HEAD
   const [offset, setOffset] = useState(0);
   const [imageWidth, setImageWidth] = useState(getImageWidth());
 
@@ -41,9 +40,6 @@ const Gallery = () => {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
-=======
-  const [offset, setOffset] = useState(0); // offset in px
->>>>>>> f44a310707bb1d1606c8f6f0471ed10d89ff7476
 
   // Start animation
   useEffect(() => {
@@ -66,27 +62,19 @@ const Gallery = () => {
   // When hover/tap, set offset so hovered image is first
   const handleMouseEnter = (idx: number) => {
     setIsPaused(true);
-<<<<<<< HEAD
     setOffset(-idx * imageWidth);
     controls.set({ x: -idx * imageWidth });
-=======
-    setOffset(-idx * IMAGE_WIDTH);
-    controls.set({ x: -idx * IMAGE_WIDTH });
->>>>>>> f44a310707bb1d1606c8f6f0471ed10d89ff7476
   };
 
   // On leave, resume animation from current offset
   const handleMouseLeave = () => {
     setIsPaused(false);
-<<<<<<< HEAD
   };
 
   // For mobile: handle tap to pause and focus image
   const handleTouch = (idx: number) => {
     handleMouseEnter(idx);
     setTimeout(() => setIsPaused(false), 2000); // Resume after 2s
-=======
->>>>>>> f44a310707bb1d1606c8f6f0471ed10d89ff7476
   };
 
   return (
