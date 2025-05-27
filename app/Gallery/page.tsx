@@ -26,7 +26,6 @@ const Gallery = () => {
   const controls = useAnimation();
   const [isPaused, setIsPaused] = useState(false);
   const [offset, setOffset] = useState(0); // offset in px
-  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
   // Start animation
   useEffect(() => {
@@ -49,7 +48,6 @@ const Gallery = () => {
   // When hover, set offset so hovered image is first
   const handleMouseEnter = (idx: number) => {
     setIsPaused(true);
-    setHoveredIdx(idx);
     setOffset(-idx * IMAGE_WIDTH);
     controls.set({ x: -idx * IMAGE_WIDTH });
   };
@@ -57,7 +55,6 @@ const Gallery = () => {
   // On leave, resume animation from current offset
   const handleMouseLeave = () => {
     setIsPaused(false);
-    setHoveredIdx(null);
   };
 
   return (
