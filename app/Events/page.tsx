@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import NavBar from "../NavBar/page";
 import Footer from "../Footer/page";
 import { motion, AnimatePresence } from "framer-motion";
-import { sanity } from "@/lib/sanity"; // adjust path as needed
+import { sanity } from "@/lib/sanity";
 
 interface EventType {
   _id: string;
@@ -34,9 +34,17 @@ const query = `*[_type == "event"]{
   }
 }`;
 
-const EventCard = ({ event }: { event: EventType }) => (
+const EventCard = ({
+  event,
+  expanded,
+  onClick,
+}: {
+  event: EventType;
+  expanded: boolean;
+  onClick: () => void;
+}) => (
   <motion.div
-    className="bg-white/20 dark:bg-neutral-900/70 rounded-2xl shadow-xl overflow-hidden backdrop-blur-md border border-white/10 flex flex-col"
+    className="bg-white/20 dark:bg-neutral-900/70 rounded-2xl shadow-xl overflow-hidden backdrop-blur-md border border-white/10 flex flex-col cursor-pointer transition-all"
     initial={{ opacity: 0, y: 40, scale: 0.95 }}
     animate={{ opacity: 1, y: 0, scale: 1 }}
     transition={{ duration: 0.5, type: "spring", stiffness: 120 }}
@@ -44,7 +52,9 @@ const EventCard = ({ event }: { event: EventType }) => (
       scale: 1.03,
       boxShadow: "0 8px 32px 0 rgba(0,0,0,0.18)",
     }}
+    onClick={onClick}
   >
+    {/* Main event image */}
     {event.images && event.images[0]?.asset?.url && (
       <img
         src={event.images[0].asset.url}
@@ -60,11 +70,48 @@ const EventCard = ({ event }: { event: EventType }) => (
         <span>
           {event.date ? new Date(event.date).toLocaleDateString() : ""}
         </span>
-        &middot; <span>{event.location}</span>
+        {event.location && (
+          <>
+            &middot; <span>{event.location}</span>
+          </>
+        )}
       </div>
-      <p className="text-gray-700 dark:text-gray-200 flex-1">
+      <p className="text-gray-700 dark:text-gray-200 flex-1 mb-2">
         {event.description}
       </p>
+      <AnimatePresence>
+        {expanded && event.images && event.images.length > 1 && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="mt-4"
+          >
+            <div className="font-semibold text-white mb-2">Gallery:</div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {event.images.slice(1).map(
+                (img, idx) =>
+                  img.asset?.url && (
+                    <img
+                      key={img.asset._id || idx}
+                      src={img.asset.url}
+                      alt={`Gallery image ${idx + 1}`}
+                      className="rounded-md border border-white/10 object-cover w-full h-28 sm:h-32"
+                      loading="lazy"
+                    />
+                  )
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <div className="mt-4 text-primary font-semibold text-center">
+        {expanded
+          ? "Click to collapse"
+          : event.images && event.images.length > 1
+          ? "Click to view gallery"
+          : ""}
+      </div>
     </div>
   </motion.div>
 );
@@ -72,6 +119,7 @@ const EventCard = ({ event }: { event: EventType }) => (
 const EventsPage = () => {
   const [search, setSearch] = useState("");
   const [events, setEvents] = useState<EventType[]>([]);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
     sanity.fetch(query).then(setEvents);
@@ -97,7 +145,7 @@ const EventsPage = () => {
           className="text-center mb-12"
         >
           <h1 className="text-4xl md:text-5xl font-extrabold text-white mb-3">
-            Upcoming <span className="text-primary">Events</span>
+            Past <span className="text-primary">Events</span>
           </h1>
           <p className="text-gray-200 max-w-2xl mx-auto">
             Stay updated with our latest events, workshops, and meetups.
@@ -116,7 +164,14 @@ const EventsPage = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredEvents.length > 0 ? (
               filteredEvents.map((event) => (
-                <EventCard key={event._id} event={event} />
+                <EventCard
+                  key={event._id}
+                  event={event}
+                  expanded={expandedId === event._id}
+                  onClick={() =>
+                    setExpandedId(expandedId === event._id ? null : event._id)
+                  }
+                />
               ))
             ) : (
               <motion.div

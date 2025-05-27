@@ -54,7 +54,7 @@ export function AnimeNavBar({
     <div className={cn("fixed top-5 left-0 right-0 z-[9999]", className)}>
       <div className="flex justify-center pt-6">
         <motion.div 
-          className="flex items-center gap-3 bg-black/50 border border-white/10 backdrop-blur-lg py-2 px-2 rounded-full shadow-lg relative"
+          className="flex items-center gap-2 bg-black/50 border border-white/10 backdrop-blur-lg py-2 px-2 rounded-full shadow-lg relative overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent max-w-full"
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{
@@ -75,7 +75,7 @@ export function AnimeNavBar({
                 onMouseEnter={() => setHoveredTab(item.name)}
                 onMouseLeave={() => setHoveredTab(null)}
                 className={cn(
-                  "relative cursor-pointer text-sm font-semibold px-6 py-3 rounded-full transition-all duration-300",
+                  "relative cursor-pointer text-xs sm:text-sm font-semibold px-3 sm:px-6 py-2 sm:py-3 rounded-full transition-all duration-300 whitespace-nowrap",
                   "text-white/70 hover:text-white",
                   isActive && "text-white"
                 )}
@@ -106,24 +106,11 @@ export function AnimeNavBar({
                   </motion.div>
                 )}
 
-                {/* Desktop Text */}
-                <motion.span
-                  className="hidden md:inline relative z-10"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  {item.name}
-                </motion.span>
-
-                {/* Mobile Icon */}
-                <motion.span 
-                  className="md:hidden relative z-10"
-                  whileHover={{ scale: 1.2 }}
-                  whileTap={{ scale: 0.9 }}
-                >
+                {/* Icon and Text always visible */}
+                <span className="flex items-center gap-1 relative z-10">
                   <Icon size={18} strokeWidth={2.5} />
-                </motion.span>
+                  <span>{item.name}</span>
+                </span>
 
                 {/* Hover Effect */}
                 <AnimatePresence>
