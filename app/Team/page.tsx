@@ -26,7 +26,8 @@ const Team = () => {
     { label: "Alumni", key: "a" },
     { label: "Gen 1", key: "1" },
     { label: "Gen 2", key: "2" },
-    { label: "Gen 3", key: "3" }
+    { label: "Gen 3", key: "3" },
+    { label: "Gen 4", key: "4" }
   ];
 
   const [selectedGen, setSelectedGen] = useState("p");
