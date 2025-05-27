@@ -29,6 +29,12 @@
       "name": "Gen 3",
       "des": "3rd Generation who will grow our club positivly",
       "link":"#"
+    },
+    {
+      "key": 5,
+      "name": "Gen 4",
+      "des": "4th Generation who will grow our club positivly",
+      "link":"#"
     }
   ],
   "teamArray": [
@@ -395,7 +401,7 @@
     {
       "key": 31,
       "gen": "a",
-      "name": "Sohom Chowdhury ",
+      "name": "Sohom Chowdhury",
       "role": "",
       "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1699949969/MEM/WhatsApp_Image_2023-11-14_at_12.47.46_198d0add_cw0sbs.jpg",
       "li": "https://www.linkedin.com/in/sitsmesohom",
@@ -403,6 +409,126 @@
       "tw": "https://www.facebook.com/sitsmesohom",
       "ig": "https://instagram.com/sitsme_sohom",
       "em": "#"
+    },
+    {
+      "key": 32,
+      "gen": "4",
+      "name": "Aditya Prasad",
+      "role": "AI/ML | Social Media",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1748298990/Gen4/Aditya_oirfqs.png",
+      "li": "https://www.linkedin.com/in/aditya-prasad-b9b57827a",
+      "gh": "https://github.com/yugamax",
+      "tw": "#",
+      "ig": "#",
+      "em": "ayp14111@gmail.com"
+    },
+    {
+      "key": 33,
+      "gen": "4",
+      "name": "Adrish Das",
+      "role": "C/C++ | Design Team",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1748298989/Gen4/Adrish_gsplk5.jpg",
+      "li": "https://www.linkedin.com/in/adrish-das-83b494330",
+      "gh": "https://github.com/Adrish1512",
+      "tw": "#",
+      "ig": "#",
+      "em": "adrishd1512@gmail.com"
+    },
+    {
+      "key": 34,
+      "gen": "4",
+      "name": "Divya Jyoti Kumari",
+      "role": "Web Developer | Phtography Team",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1748298991/Gen4/Divya_Jyoti_vx6mei.jpg",
+      "li": "https://www.linkedin.com/in/divya-jyoti-kumari-530707295",
+      "gh": "https://github.com/Divyajyotikumari",
+      "tw": "#",
+      "ig": "#",
+      "em": "divyakri933@gmail.com"
+    },
+    {
+      "key": 35,
+      "gen": "4",
+      "name": "Mangolik Debnath",
+      "role": "C/C++ | Content Team",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1748369041/Mangolik_efr1cd.png",
+      "li": "https://www.linkedin.com/in/mangolik-debnath-a348012b2",
+      "gh": "https://github.com/MangolikIsHere",
+      "tw": "#",
+      "ig": "#",
+      "em": "debnathmangolik@gmail.com"
+    },
+    {
+      "key": 36,
+      "gen": "4",
+      "name": "Neehal Dey",
+      "role": "DSA | PR/Outreach Team",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1748298990/Gen4/Neehal_rietbv.jpg",
+      "li": "https://www.linkedin.com/in/neehal-dey-028496330",
+      "gh": "https://github.com/Neehal2004",
+      "tw": "#",
+      "ig": "#",
+      "em": "riku442015@gmail.com"
+    },
+    {
+      "key": 37,
+      "gen": "4",
+      "name": "Srijita Chakraborty",
+      "role": "AI/ML | PR/Outreach Team",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1748298990/Gen4/Srijita_hppeel.png",
+      "li": "https://www.linkedin.com/in/srijita-chakraborty-a61a88290",
+      "gh": "#",
+      "tw": "#",
+      "ig": "#",
+      "em": "csrijita001@gmail.com"
+    },
+    {
+      "key": 38,
+      "gen": "4",
+      "name": "Sruti Gupta",
+      "role": "Web Developer | Content Team",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1748298989/Gen4/Sruti_vmbpim.jpg",
+      "li": " https://www.linkedin.com/in/sruti-gupta-2979032a2",
+      "gh": "https://github.com/SrutiGupta",
+      "tw": "#",
+      "ig": "#",
+      "em": "mg6156710@gmail.com"
+    },
+    {
+      "key": 39,
+      "gen": "4",
+      "name": "Suman Panja",
+      "role": "C/C++ | Pothography Team",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1748298990/Gen4/Suman_xlyc3a.jpg",
+      "li": "https://www.linkedin.com/in/suman-panja-934694314",
+      "gh": "https://github.com/sumanpanja2005",
+      "tw": "#",
+      "ig": "#",
+      "em": "sumanpanja2005@gmail.com"
+    },
+    {
+      "key": 40,
+      "gen": "4",
+      "name": "Tanmay Joddar",
+      "role": "Web Developer | Design Team",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1748298991/Gen4/Tanmay_hffhhe.jpg",
+      "li": "https://www.linkedin.com/in/tanmay-joddar-67107427a",
+      "gh": "https://github.com/TJ456",
+      "tw": "#",
+      "ig": "#",
+      "em": "tanmayjoddar71@gmail.com"
+    },
+    {
+      "key": 41,
+      "gen": "4",
+      "name": "Probal Sen",
+      "role": "DSA | Social Media",
+      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1748298992/Gen4/Probal_ozehpt.jpg",
+      "li": "https://www.linkedin.com/in/probal-sen-7a2434330",
+      "gh": "https://github.com/Probal-Sen",
+      "tw": "#",
+      "ig": "#",
+      "em": "9probalsen@gmail.com"
     }
   ]
 }
