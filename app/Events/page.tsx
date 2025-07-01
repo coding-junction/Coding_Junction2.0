@@ -122,7 +122,15 @@ const EventsPage = () => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
-    sanity.fetch(query).then(setEvents);
+    sanity.fetch(query).then((data: EventType[]) => {
+      // Sort events from oldest to newest by date
+      const sorted = [...data].sort((a, b) => {
+        if (!a.date) return -1;
+        if (!b.date) return 1;
+        return new Date(a.date).getTime() - new Date(b.date).getTime();
+      });
+      setEvents(sorted);
+    });
   }, []);
 
   const filteredEvents = events.filter((event) => {
