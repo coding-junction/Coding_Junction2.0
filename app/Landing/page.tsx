@@ -6,7 +6,6 @@ import NavBar from "../NavBar/page";
 import Overview from "../Overview/page";
 import Testimonial from "../Testimonial/page";
 import UpcomingEvent from "../UpcomingEvent/page";
-import Advisor from "../Advisor/page";
 
 export default function Landing() {
   return (
@@ -14,7 +13,6 @@ export default function Landing() {
         <NavBar />
         <Header />
         <UpcomingEvent />
-        <Advisor />
         <Overview/>
         <Domains />
         <Testimonial/>
