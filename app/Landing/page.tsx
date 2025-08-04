@@ -1,4 +1,5 @@
 import About from "../About/page";
+import CommunityPartners from "../CommunityPartners/page";
 import Domains from "../Domains/page";
 import Footer from "../Footer/page";
 import Header from "../Header/page";
@@ -16,6 +17,7 @@ export default function Landing() {
         <Overview/>
         <Domains />
         <Testimonial/>
+        <CommunityPartners />
         <About/>
         <Footer />
     </div>
