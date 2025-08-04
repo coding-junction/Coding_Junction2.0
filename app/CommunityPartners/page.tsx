@@ -42,24 +42,24 @@ const currentPartners: Partner[] = [
 //   }
 ];
 
-const pastPartners: Partner[] = [
-  {
-    id: 4,
-    name: "Cloud Native Hooghly",
-    logo: "/Assets/Logo/cnh_logo_stacked.png", // Using existing logo as placeholder
-    website: "https://community.cncf.io/cloud-native-hooghly",
-    description: "CNCF Hooghly Chapter, the dynamic and vibrant local community group affiliated with the prestigious Cloud Native Computing Foundation (CNCF). Our mission is to revolutionize the cloud-native landscape in the Hooghly region by fostering a platform that empowers networking, education, and collaboration.",
-    status: 'past'
-  },
-  {
-    id: 5,
-    name: "Startup Accelerator",
-    logo: "/Assets/Logo/cj_new_logo_2024.png", // Using existing logo as placeholder
-    website: "https://startupaccelerator.com",
-    description: "Helped launch numerous tech startups",
-    status: 'past'
-  }
-];
+// const pastPartners: Partner[] = [
+//   {
+//     id: 4,
+//     name: "Cloud Native Hooghly",
+//     logo: "/Assets/Logo/cnh_logo_stacked.png", // Using existing logo as placeholder
+//     website: "https://community.cncf.io/cloud-native-hooghly",
+//     description: "CNCF Hooghly Chapter, the dynamic and vibrant local community group affiliated with the prestigious Cloud Native Computing Foundation (CNCF). Our mission is to revolutionize the cloud-native landscape in the Hooghly region by fostering a platform that empowers networking, education, and collaboration.",
+//     status: 'past'
+//   },
+//   {
+//     id: 5,
+//     name: "Startup Accelerator",
+//     logo: "/Assets/Logo/cj_new_logo_2024.png", // Using existing logo as placeholder
+//     website: "https://startupaccelerator.com",
+//     description: "Helped launch numerous tech startups",
+//     status: 'past'
+//   }
+// ];
 
 export default function CommunityPartners() {
   const handlePartnerClick = (website: string) => {
