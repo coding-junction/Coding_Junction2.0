@@ -21,7 +21,7 @@ const currentPartners: Partner[] = [
     name: "DSU DEVHACK 2.0",
     logo: "/Assets/Logo/logoo 1.png", // Using existing logo as placeholder
     website: "https://www.dsudevhack2.tech",
-    description: "DSU DEVHACK 2025 is a national-level hackathon taking place at DSU Harohalli, Bangalore, Karnataka. This event challenges participants to innovate in cutting-edge fields like **AI, Machine Learning (ML), Internet of Things (IoT), Blockchain, Cybersecurity, and Cloud computing. The hackathon boasts a substantial prize pool, including a ₹2 lakh cash prize pool and an additional ₹10 lakh-plus worth of prizes.",
+    description: "DSU DEVHACK 2025 is a national-level hackathon taking place at DSU Harohalli, Bangalore, Karnataka. This event challenges participants to innovate in cutting-edge fields like AI, Machine Learning (ML), Internet of Things (IoT), Blockchain, Cybersecurity, and Cloud computing. The hackathon boasts a substantial prize pool, including a ₹2 lakh cash prize pool and an additional ₹10 lakh-plus worth of prizes.",
     status: 'current'
   },
 //   {
