@@ -9,7 +9,7 @@ export default function DummyPage() {
           {/* Image */}
           <div className="relative w-48 h-48 rounded-full overflow-hidden border-4 border-gray-500 shadow-lg">
             <Image
-              src="/Assets/Images/donadi3.jpg"
+              src="/Assets/Images/donadi5.jpg"
               alt="Dona Murmu"
               fill
               className="object-cover"
