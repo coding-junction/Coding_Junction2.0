@@ -39,26 +39,14 @@ export default function DummyPage() {
             May her soul rest in eternal peace. She will always be remembered
             with love and respect.
           </p>
-          <p className="italic text-gray-500">Om Shanti 🤍</p>
         </div>
 
-        {/* Condolence Note */}
         <div className="mt-8 border-t border-gray-700 pt-6">
-          <p className="text-gray-400">
-            It’s very unfortunate to share that,{" "}
-            <span className="font-semibold text-white">Dona Murmu</span>, our
-            extremely adored member of{" "}
-            <span className="font-semibold text-white">Coding Junction</span>,
-            has passed away.
-          </p>
-          <p className="mt-3 text-gray-400">
-            Her sudden departure is deeply painful beyond explanation, leaving a
-            void in us. The loss is tragic, and her absence will be felt by
-            everyone who knew her.
-          </p>
           <p className="mt-3 text-gray-300 font-medium">
             You will be deeply missed, Didi.
           </p>
+
+          <p className="italic text-gray-500 mt-3">Om Shanti 🤍</p>
         </div>
       </div>
     </div>
