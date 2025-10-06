@@ -45,8 +45,7 @@ export default function DummyPage() {
           <p className="mt-3 text-gray-300 font-medium">
             You will be deeply missed, Didi.
           </p>
-
-          <p className="italic text-gray-500 mt-3">Om Shanti 🤍</p>
+         <p className="italic text-gray-500 mt-3">Om Shanti 🤍</p>
         </div>
       </div>
     </div>
