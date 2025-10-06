@@ -1,16 +1,11 @@
-// import Landing from "./Landing/page";
+import Landing from "./Landing/page";
 
 
-
-// export default function Home() {
-//   return (
-//     <div>
-//       <Landing/>
-//     </div>
-//   );
-// }
-import DummyPage from "./DummyPage";
 
 export default function Home() {
-  return <DummyPage />;
+  return (
+    <div>
+      <Landing/>
+    </div>
+  );
 }
