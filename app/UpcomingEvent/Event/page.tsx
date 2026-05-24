@@ -39,6 +39,11 @@ const Event = () => {
       .then((data) => {
         setEvents(data);
         setLoading(false);
+      })
+      .catch((error) => {
+        console.error("Failed to fetch events from Sanity:", error);
+        setEvents([]);
+        setLoading(false);
       });
   }, []);
 
