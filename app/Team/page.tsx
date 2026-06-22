@@ -1,8 +1,9 @@
 "use client";
 import React, { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import Link from "next/link";
+import Image from "next/image";
 import json from "./team.json";
 import { Button } from "@/components/ui/button";
 import { Mail } from "lucide-react";
@@ -121,15 +122,21 @@ const Team = () => {
                   whileTap={{ scale: 0.97 }}
                   layout
                 >
-                  <motion.img
-                    src={member.image}
-                    alt={member.name}
-                    className="h-36 w-36 rounded-full object-cover border-4 border-gray-200 dark:border-neutral-700"
+                  <motion.div
+                    className="h-36 w-36 rounded-full overflow-hidden border-4 border-gray-200 dark:border-neutral-700"
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: idx * 0.08 + 0.2, type: "spring", stiffness: 180 }}
                     whileHover={{ scale: 1.12, boxShadow: "0 4px 24px 0 rgba(0,0,0,0.18)" }}
-                  />
+                  >
+                    <Image
+                      src={member.image}
+                      alt={member.name}
+                      width={144}
+                      height={144}
+                      className="h-full w-full object-cover"
+                    />
+                  </motion.div>
                   <div>
                     <h3 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-gray-200">
                       {member.name}

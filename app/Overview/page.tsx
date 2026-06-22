@@ -32,14 +32,14 @@ const Overview = () => {
       darkText: "text-green-300"
     },
     {
-      icon: <GraduationCap className="h-6 w-6 text-purple-600 dark:text-purple-400" />,
+      icon: <GraduationCap className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />,
       title: "Alumni",
       value: teamMetrics.alumni,
       description: "Previous contributors",
-      lightBg: "bg-purple-100",
-      darkBg: "bg-purple-900/20",
-      lightText: "text-purple-800",
-      darkText: "text-purple-300"
+      lightBg: "bg-emerald-100",
+      darkBg: "bg-emerald-900/20",
+      lightText: "text-emerald-800",
+      darkText: "text-emerald-300"
     }
   ];
 

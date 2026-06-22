@@ -162,4 +162,13 @@
     -ms-overflow-style: none;  /* IE and Edge */
     scrollbar-width: none;  /* Firefox */
   }
+
+  @keyframes scan {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(100%); }
+  }
+  @keyframes slideRight {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
 }

@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { BackgroundGradient } from "@/components/ui/background-gradient";
+import Image from "next/image";
 import { sanity } from "@/lib/sanity";
 
 interface EventType {
@@ -78,7 +79,7 @@ const Event = () => {
               <div className="absolute bottom-4 left-8 text-pink-400 text-2xl animate-pulse">★</div>
               <div className="absolute top-8 left-1/2 -translate-x-1/2 text-blue-400 text-2xl animate-spin-slow">✦</div>
               {event.image?.asset?.url ? (
-                <img
+                <Image
                   src={event.image.asset.url}
                   alt={event.title}
                   height={340}

@@ -45,3 +45,5 @@ next-env.d.ts
 /.clerk/
 
 lib/sanity.ts
+.agents
+seo-performance.md

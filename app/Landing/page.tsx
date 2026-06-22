@@ -10,7 +10,7 @@ import UpcomingEvent from "../UpcomingEvent/page";
 
 export default function Landing() {
   return (
-    <div>
+    <>
         <NavBar />
         <Header />
         <UpcomingEvent />
@@ -20,6 +20,6 @@ export default function Landing() {
         <CommunityPartners />
         <About/>
         <Footer />
-    </div>
+    </>
   );
 }
