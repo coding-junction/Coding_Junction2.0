@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,7 +32,7 @@ export function Header1() {
                     
                     {/* Left Side - Logo & Name */}
                     <div className="flex items-center gap-3">
-                        <img src="/logo.png" alt="Logo" className="h-8 w-8" /> 
+                        <Image src="/logo.png" alt="Logo" width={32} height={32} className="h-8 w-8" priority /> 
                         
                     </div>
 

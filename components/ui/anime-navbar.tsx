@@ -1,8 +1,10 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { useRouter, usePathname } from "next/navigation"
+import { motion, AnimatePresence } from "motion/react"
+import { usePathname } from "next/navigation"
+import Link from "next/link"
+import Image from "next/image"
 import { LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -25,7 +27,6 @@ export function AnimeNavBar({
   className, 
   defaultActive = "Home" 
 }: NavBarProps) {
-  const router = useRouter()
   const pathname = usePathname()
   
   // State Management
@@ -45,7 +46,7 @@ export function AnimeNavBar({
 
   // Pathname Change Effect
   useEffect(() => {
-    const currentItem = items.find(item => item.url === pathname)
+    const currentItem = items.find(item => item.url.toLowerCase() === pathname.toLowerCase())
     if (currentItem) {
       setActiveTab(currentItem.name)
     }
@@ -54,21 +55,30 @@ export function AnimeNavBar({
   // Prevent rendering before client-side mount
   if (!mounted) return null
 
-  // Navigation Handler
-  const handleNavigation = (item: NavItem) => {
-    setActiveTab(item.name)
-    router.push(item.url)
-  }
-
   return (
-    <div
-      className={cn(
-        // Lower on mobile for mascot space, tighter on desktop
-        "fixed left-0 right-0 z-[9999]",
-        isMobile ? "top-3" : "top-5",
-        className
-      )}
-    >
+    <>
+      <div
+        className={cn(
+          // Lower on mobile for mascot space, tighter on desktop
+          "fixed left-0 right-0 z-[9999]",
+          isMobile ? "top-3" : "top-5",
+          className
+        )}
+      >
+      {/* Brand Logo — Fixed Top Left */}
+      <div className="fixed top-4 left-4 z-[9999]">
+        <Link href="/" aria-label="Coding Junction Home">
+          <Image
+            src="/CodingJunction_withText_black_withoutBackground.png"
+            alt="Coding Junction"
+            width={240}
+            height={80}
+            className="h-12 md:h-16 w-auto object-contain dark:invert"
+            priority
+          />
+        </Link>
+      </div>
+
       <div className={cn("flex justify-center", isMobile ? "pt-2" : "pt-6")}>
         <motion.div 
           className={cn(
@@ -91,9 +101,9 @@ export function AnimeNavBar({
             const isHovered = hoveredTab === item.name
 
             return (
-              <div 
+              <Link
+                href={item.url} 
                 key={item.name}
-                onClick={() => handleNavigation(item)}
                 onMouseEnter={() => setHoveredTab(item.name)}
                 onMouseLeave={() => setHoveredTab(null)}
                 className={cn(
@@ -342,11 +352,12 @@ export function AnimeNavBar({
                     </div>
                   </motion.div>
                 )}
-              </div>
+              </Link>
             )
           })}
         </motion.div>
       </div>
     </div>
+    </>
   )
 }
