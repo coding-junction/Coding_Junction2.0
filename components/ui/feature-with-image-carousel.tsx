@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import Image from "next/image";
 import {
   Carousel,
   CarouselContent,
@@ -38,7 +39,7 @@ function Feature() {
                 {placeholderImages.map((image, index) => (
                   <CarouselItem key={index} className="flex-shrink-0 w-full">
                     <div className="flex rounded-lg aspect-video bg-gray-200 dark:bg-gray-800 items-center justify-center p-2 shadow-md">
-                      <img
+                      <Image
                         src={image}
                         alt={`CJ image ${index + 1}`}
                         width={800}

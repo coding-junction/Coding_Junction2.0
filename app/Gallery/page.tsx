@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
-import { motion, useAnimation } from "framer-motion";
+import { motion, useAnimation } from "motion/react";
 import NavBar from "../NavBar/page";
 import Footer from "../Footer/page";
 
@@ -78,7 +78,7 @@ const Gallery = () => {
   };
 
   return (
-    <div className="w-full min-h-screen bg-black">
+    <div className="w-full min-h-screen bg-white dark:bg-black transition-colors duration-300">
       <NavBar />
 
       <div className="container mx-auto pt-32 pb-20 px-2 sm:px-4 md:px-8 lg:px-16">
@@ -88,16 +88,16 @@ const Gallery = () => {
           transition={{ duration: 0.8 }}
           className="text-center mb-12"
         >
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white mb-4">
             Our <span className="text-primary">Gallery</span>
           </h1>
-          <p className="text-white/70 max-w-2xl mx-auto text-base sm:text-lg">
+          <p className="text-gray-600 dark:text-white/70 max-w-2xl mx-auto text-base sm:text-lg">
             Explore our collection of memorable moments and achievements
           </p>
         </motion.div>
 
         <div className="flex justify-center">
-          <div className="overflow-hidden w-full max-w-full sm:max-w-2xl md:max-w-4xl lg:max-w-6xl mx-auto rounded-xl border border-white/10 shadow-lg">
+          <div className="overflow-hidden w-full max-w-full sm:max-w-2xl md:max-w-4xl lg:max-w-6xl mx-auto rounded-xl border border-gray-200 dark:border-white/10 shadow-lg">
             <motion.div
               className="flex"
               style={{ width: "max-content" }}

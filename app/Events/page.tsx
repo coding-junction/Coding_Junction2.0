@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from "react";
 import NavBar from "../NavBar/page";
 import Footer from "../Footer/page";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
+import Image from "next/image";
 import { sanity } from "@/lib/sanity";
 
 interface EventType {
@@ -56,11 +57,15 @@ const EventCard = ({
   >
     {/* Main event image */}
     {event.images && event.images[0]?.asset?.url && (
-      <img
-        src={event.images[0].asset.url}
-        alt={event.title}
-        className="w-full h-48 object-cover"
-      />
+      <div className="relative w-full h-48">
+        <Image
+          src={event.images[0].asset.url}
+          alt={event.title}
+          fill
+          className="object-cover"
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+        />
+      </div>
     )}
     <div className="p-6 flex flex-col flex-1">
       <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">
@@ -87,18 +92,20 @@ const EventCard = ({
             exit={{ height: 0, opacity: 0 }}
             className="mt-4"
           >
-            <div className="font-semibold text-white mb-2">Gallery:</div>
+            <div className="font-semibold text-gray-800 dark:text-white mb-2">Gallery:</div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {event.images.slice(1).map(
                 (img, idx) =>
                   img.asset?.url && (
-                    <img
-                      key={img.asset._id || idx}
-                      src={img.asset.url}
-                      alt={`Gallery image ${idx + 1}`}
-                      className="rounded-md border border-white/10 object-cover w-full h-28 sm:h-32"
-                      loading="lazy"
-                    />
+                    <div key={img.asset._id || idx} className="relative rounded-md border border-white/10 overflow-hidden w-full h-28 sm:h-32">
+                      <Image
+                        src={img.asset.url}
+                        alt={`Gallery image ${idx + 1}`}
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 768px) 50vw, 33vw"
+                      />
+                    </div>
                   )
               )}
             </div>
@@ -148,7 +155,7 @@ const EventsPage = () => {
   });
 
   return (
-    <div className="flex flex-col min-h-screen bg-black">
+    <div className="flex flex-col min-h-screen bg-white dark:bg-black transition-colors duration-300">
       <NavBar />
       <main className="flex-1 container mx-auto px-4 py-24">
         <motion.div
@@ -157,10 +164,10 @@ const EventsPage = () => {
           transition={{ duration: 0.7 }}
           className="text-center mb-12"
         >
-          <h1 className="text-4xl md:text-5xl font-extrabold text-white mb-3">
+          <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white mb-3">
             Past <span className="text-primary">Events</span>
           </h1>
-          <p className="text-gray-200 max-w-2xl mx-auto">
+          <p className="text-gray-600 dark:text-gray-200 max-w-2xl mx-auto">
             Stay updated with our latest events, workshops, and meetups.
           </p>
         </motion.div>
