@@ -1,12 +1,13 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useState, useTransition } from "react"
 import { motion, AnimatePresence } from "motion/react"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
 import { LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
+import Loading from "@/app/loading"
 
 // Navigation Item Interface
 interface NavItem {
@@ -28,12 +29,15 @@ export function AnimeNavBar({
   defaultActive = "Home" 
 }: NavBarProps) {
   const pathname = usePathname()
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
   
   // State Management
   const [mounted, setMounted] = useState(false)
   const [hoveredTab, setHoveredTab] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<string>(defaultActive)
   const [isMobile, setIsMobile] = useState(false)
+  const [showForcedLoading, setShowForcedLoading] = useState(false)
 
   // Mounted Effect
   useEffect(() => {
@@ -57,32 +61,31 @@ export function AnimeNavBar({
 
   return (
     <>
-      <div
-        className={cn(
-          // Lower on mobile for mascot space, tighter on desktop
-          "fixed left-0 right-0 z-[9999]",
-          isMobile ? "top-3" : "top-5",
-          className
-        )}
-      >
-      {/* Brand Logo — Fixed Top Left */}
-      <div className="fixed top-4 left-4 z-[9999]">
+      {/* Brand Logo - Completely separated and fixed to top-left */}
+      <div className="fixed top-4 left-4 z-[9999] pointer-events-auto">
         <Link href="/" aria-label="Coding Junction Home">
           <Image
             src="/CodingJunction_withText_black_withoutBackground.png"
             alt="Coding Junction"
             width={240}
             height={80}
-            className="h-12 md:h-16 w-auto object-contain dark:invert"
+            className="h-10 md:h-16 w-auto object-contain dark:invert"
             priority
           />
         </Link>
       </div>
 
-      <div className={cn("flex justify-center", isMobile ? "pt-2" : "pt-6")}>
+      {/* Semantic Nav Container */}
+      <nav
+        className={cn(
+          "fixed left-0 right-0 z-[9999] pointer-events-none flex justify-center w-full",
+          isMobile ? "bottom-6" : "top-11",
+          className
+        )}
+      >
         <motion.div 
           className={cn(
-            "flex items-center bg-black/50 border border-white/10 backdrop-blur-lg rounded-full shadow-lg relative",
+            "flex items-center bg-black/50 border border-white/10 backdrop-blur-lg rounded-full shadow-lg relative pointer-events-auto",
             isMobile
               ? "gap-1 py-1 px-1 max-w-[95vw] overflow-x-auto"
               : "gap-3 py-2 px-2"
@@ -104,6 +107,32 @@ export function AnimeNavBar({
               <Link
                 href={item.url} 
                 key={item.name}
+                onClick={(e) => {
+                  e.preventDefault()
+                  if (item.url === pathname) return; // Ignore if same page
+                  
+                  setActiveTab(item.name)
+                  
+                  // Check if we have shown the artificial loading delay this session
+                  const hasSeenLoading = sessionStorage.getItem('hasSeenForcedLoading');
+                  
+                  if (!hasSeenLoading) {
+                    setShowForcedLoading(true)
+                    sessionStorage.setItem('hasSeenForcedLoading', 'true')
+                    
+                    // Force a 3.5 second delay before triggering the router
+                    setTimeout(() => {
+                      startTransition(() => {
+                        router.push(item.url)
+                      })
+                    }, 3500)
+                  } else {
+                    // Subsequent clicks navigate normally
+                    startTransition(() => {
+                      router.push(item.url)
+                    })
+                  }
+                }}
                 onMouseEnter={() => setHoveredTab(item.name)}
                 onMouseLeave={() => setHoveredTab(null)}
                 className={cn(
@@ -180,7 +209,7 @@ export function AnimeNavBar({
                     layoutId="anime-mascot"
                     className={cn(
                       "absolute left-1/2 -translate-x-1/2 pointer-events-none z-[10000]",
-                      isMobile ? "-top-4" : "-top-12"
+                      isMobile ? "-top-8" : "-top-12"
                     )}
                     initial={false}
                     transition={{
@@ -356,8 +385,14 @@ export function AnimeNavBar({
             )
           })}
         </motion.div>
-      </div>
-    </div>
+      </nav>
+
+      {/* Forced Global Loading Screen Overlay */}
+      {(showForcedLoading || isPending) && (
+        <div className="fixed inset-0 z-[99999] pointer-events-auto">
+          <Loading />
+        </div>
+      )}
     </>
   )
 }
