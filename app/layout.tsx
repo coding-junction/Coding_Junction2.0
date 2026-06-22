@@ -55,6 +55,9 @@ export const metadata: Metadata = {
     ],
     apple: '/CodingJunction_withoutText_neonBackground.png',
   },
+  verification: {
+    google: "2DqIo8ZkJd2Nn5PHUbNYz0eLGp7HCBERQiDyG97LyI0",
+  },
 };
 
 export default function RootLayout({
