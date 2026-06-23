@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { motion, useAnimation } from "motion/react";
 import NavBar from "../NavBar/page";
-import Footer from "../Footer/page";
 
 const images = [
   "/Assets/Images/gallery_image.jpg",
@@ -152,8 +151,6 @@ const Gallery = () => {
           </div>
         </div>
       </div>
-
-      <Footer />
     </div>
   );
 };
