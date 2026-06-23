@@ -1,7 +1,6 @@
 import React, { Suspense } from "react";
 import type { Metadata } from "next";
 import NavBar from "../NavBar/page";
-import Footer from "../Footer/page";
 import TeamClient from "@/components/TeamClient";
 
 export const metadata: Metadata = {
@@ -33,7 +32,6 @@ export default function TeamPage() {
           <TeamClient />
         </Suspense>
       </main>
-      <Footer />
     </div>
   );
 }

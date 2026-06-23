@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ClerkProvider } from '@clerk/nextjs';
 import { ThemeProvider } from "@/components/theme-provider";
+import Footer from './Footer/page';
 import { SplashScreen } from "@/components/ui/splash-screen";
 import "./globals.css";
 
@@ -112,6 +113,7 @@ export default function RootLayout({
           <ClerkProvider>
             <SplashScreen />
             {children}
+            <Footer />
           </ClerkProvider>
         </ThemeProvider>
       </body>

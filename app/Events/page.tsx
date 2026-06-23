@@ -1,7 +1,6 @@
 import React, { Suspense } from "react";
 import type { Metadata } from "next";
 import NavBar from "../NavBar/page";
-import Footer from "../Footer/page";
 import { sanity } from "@/lib/sanity";
 import EventsClient, { EventType } from "@/components/EventsClient";
 
@@ -65,7 +64,6 @@ export default function EventsPage() {
           <EventsDataLoader />
         </Suspense>
       </main>
-      <Footer />
     </div>
   );
 }

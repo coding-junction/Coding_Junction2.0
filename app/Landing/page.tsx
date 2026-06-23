@@ -1,7 +1,7 @@
 import About from "../About/page";
 import CommunityPartners from "../CommunityPartners/page";
 import Domains from "../Domains/page";
-import Footer from "../Footer/page";
+// Footer is provided globally in layout.tsx
 import Header from "../Header/page";
 import NavBar from "../NavBar/page";
 import Overview from "../Overview/page";
@@ -19,7 +19,6 @@ export default function Landing() {
         <Testimonial/>
         <CommunityPartners />
         <About/>
-        <Footer />
     </>
   );
 }

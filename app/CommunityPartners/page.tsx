@@ -1,7 +1,6 @@
 import React, { Suspense } from "react";
 import type { Metadata } from "next";
 import NavBar from "../NavBar/page";
-import Footer from "../Footer/page";
 import CommunityPartnersClient from "@/components/CommunityPartnersClient";
 
 export const metadata: Metadata = {
@@ -31,7 +30,6 @@ export default function CommunityPartnersPage() {
       <Suspense fallback={<PartnersLoading />}>
         <CommunityPartnersClient />
       </Suspense>
-      <Footer />
     </div>
   );
 }
