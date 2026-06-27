@@ -89,9 +89,10 @@ function Footerdemo() {
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="outline" size="icon" className="rounded-full" >
-                      <Facebook className="h-4 w-4" />
-                      <span className="sr-only">Facebook</span>
+                    <Button variant="outline" size="icon" className="rounded-full" asChild>
+                      <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
+                        <Facebook className="h-4 w-4" />
+                      </a>
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -102,9 +103,10 @@ function Footerdemo() {
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="outline" size="icon" className="rounded-full">
-                      <Twitter className="h-4 w-4" />
-                      <span className="sr-only">Twitter</span>
+                    <Button variant="outline" size="icon" className="rounded-full" asChild>
+                      <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" aria-label="Twitter">
+                        <Twitter className="h-4 w-4" />
+                      </a>
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -115,9 +117,10 @@ function Footerdemo() {
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="outline" size="icon" className="rounded-full">
-                      <Instagram className="h-4 w-4" />
-                      <span className="sr-only">Instagram</span>
+                    <Button variant="outline" size="icon" className="rounded-full" asChild>
+                      <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+                        <Instagram className="h-4 w-4" />
+                      </a>
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -128,9 +131,10 @@ function Footerdemo() {
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="outline" size="icon" className="rounded-full">
-                      <Linkedin className="h-4 w-4" />
-                      <span className="sr-only">LinkedIn</span>
+                    <Button variant="outline" size="icon" className="rounded-full" asChild>
+                      <a href="https://linkedin.com/company/coding-junction" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
+                        <Linkedin className="h-4 w-4" />
+                      </a>
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>

@@ -1,4 +1,4 @@
-import Landing from "./Landing/page";
+import Landing from "@/components/landing/landing-page";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {

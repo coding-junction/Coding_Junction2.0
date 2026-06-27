@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { motion, useAnimation } from "motion/react";
-import NavBar from "../NavBar/page";
 
 const images = [
   "/Assets/Images/gallery_image.jpg",
@@ -55,7 +54,6 @@ const Gallery = () => {
     } else {
       controls.stop();
     }
-    // eslint-disable-next-line
   }, [isPaused, offset, controls, imageWidth]);
 
   // When hover/tap, set offset so hovered image is first
@@ -78,8 +76,6 @@ const Gallery = () => {
 
   return (
     <div className="w-full min-h-screen bg-white dark:bg-black transition-colors duration-300">
-      <NavBar />
-
       <div className="container mx-auto pt-32 pb-20 px-2 sm:px-4 md:px-8 lg:px-16">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
