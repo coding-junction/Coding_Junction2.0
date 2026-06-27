@@ -1,6 +1,5 @@
 import React, { Suspense } from "react";
 import type { Metadata } from "next";
-import NavBar from "../NavBar/page";
 import { sanity } from "@/lib/sanity";
 import EventsClient, { EventType } from "@/components/EventsClient";
 
@@ -58,7 +57,6 @@ async function EventsDataLoader() {
 export default function EventsPage() {
   return (
     <div className="flex flex-col min-h-screen bg-white dark:bg-black transition-colors duration-300">
-      <NavBar />
       <main className="flex-1 container mx-auto px-4 py-24">
         <Suspense fallback={<EventsLoading />}>
           <EventsDataLoader />

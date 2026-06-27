@@ -25,7 +25,7 @@ const items = [
   },
   {
     name: "App",
-    url: "/App",
+    url: "/mobile-app",
     href: "#",
     icon: AppWindowIcon,
   },

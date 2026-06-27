@@ -16,7 +16,7 @@ const TeamClient = () => {
 
   const Gen = [
     { label: "President", key: "p" },
-    { label: "Alumni", key: "a" },
+    // { label: "Alumni", key: "a" },
     { label: "Gen 1", key: "1" },
     { label: "Gen 2", key: "2" },
     { label: "Gen 3", key: "3" },
@@ -78,9 +78,9 @@ const TeamClient = () => {
         )}
       </AnimatePresence>
       {/* Main Content Area */}
-      <div className="flex flex-1 pt-24 md:pt-0">
+      <div className="flex flex-1 relative">
         {/* Desktop Sidebar */}
-        <div className="hidden md:flex w-64 bg-white dark:bg-neutral-900 p-6 flex-col border-r dark:border-neutral-700 mt-24">
+        <div className="hidden md:flex w-64 bg-white dark:bg-neutral-900 p-6 flex-col border-r dark:border-neutral-700 md:sticky md:top-32 md:mt-32 md:h-[calc(100vh-8rem)]">
           <div className="mt-8 space-y-3">
             {Gen.map((gen) => (
               <Button
@@ -95,7 +95,7 @@ const TeamClient = () => {
           </div>
         </div>
         {/* Team Members Grid */}
-        <div className="flex-1 p-4 md:p-8 overflow-y-auto sm:mt-20 md:mt-24 lg:mt-28">
+        <div className="flex-1 p-4 md:p-8 overflow-y-auto mt-24 md:mt-32">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 pt-6">
             {teamArray
               .filter(member => member.gen === selectedGen)

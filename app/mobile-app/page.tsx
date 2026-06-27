@@ -1,12 +1,10 @@
 import React from 'react';
 import { Download, Smartphone, Star, Shield } from 'lucide-react';
-import NavBar from '../NavBar/page';
 
 const App = () => {
   return (
 
     <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-white transition-colors duration-300">
-      <NavBar/>
       <div className="container mx-auto px-4 pt-32 pb-16">
         {/* Hero Section */}
         <div className="text-center mb-16">

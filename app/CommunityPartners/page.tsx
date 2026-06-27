@@ -1,6 +1,5 @@
 import React, { Suspense } from "react";
 import type { Metadata } from "next";
-import NavBar from "../NavBar/page";
 import CommunityPartnersClient from "@/components/CommunityPartnersClient";
 
 export const metadata: Metadata = {
@@ -26,7 +25,6 @@ function PartnersLoading() {
 export default function CommunityPartnersPage() {
   return (
     <div className="flex flex-col min-h-screen bg-white dark:bg-black transition-colors duration-300">
-      <NavBar />
       <Suspense fallback={<PartnersLoading />}>
         <CommunityPartnersClient />
       </Suspense>

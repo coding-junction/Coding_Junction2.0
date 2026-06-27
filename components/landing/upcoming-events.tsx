@@ -54,7 +54,7 @@ const Event = () => {
       <div className="absolute -top-24 -left-24 w-80 h-80 bg-gradient-to-br from-blue-300 via-blue-200 to-transparent dark:from-blue-900 dark:via-blue-800 rounded-full opacity-30 blur-3xl pointer-events-none z-0 animate-pulse" />
       <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-gradient-to-tr from-blue-400 via-blue-200 to-transparent dark:from-blue-700 dark:via-blue-900 rounded-full opacity-20 blur-3xl pointer-events-none z-0 animate-pulse" />
 
-      <h2 className="text-5xl md:text-6xl font-extrabold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-700 via-blue-400 to-pink-400 dark:from-blue-200 dark:via-blue-400 dark:to-pink-300 tracking-tight z-10 drop-shadow-xl">
+      <h2 className="text-center text-5xl md:text-6xl font-extrabold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-700 via-blue-400 to-pink-400 dark:from-blue-200 dark:via-blue-400 dark:to-pink-300 tracking-tight z-10 drop-shadow-xl">
         Upcoming Event
       </h2>
       <p className="text-xl md:text-2xl text-blue-700 dark:text-blue-200 mb-12 max-w-2xl text-center z-10 font-medium">
