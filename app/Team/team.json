@@ -4,37 +4,37 @@
       "key": 0,
       "name": "President",
       "des": "",
-      "href":"#"
+      "href": "#"
     },
     {
       "key": 4,
       "name": "Alumni",
       "des": "",
-      "href":"#"
+      "href": "#"
     },
     {
       "key": 1,
       "name": "Gen 1",
       "des": "The Most earliest batch that layed the foundation of the club",
-      "href":"#"
+      "href": "#"
     },
     {
       "key": 2,
       "name": "Gen 2",
       "des": "2nd Generation build our club Strong and Secure",
-      "href":"#"
+      "href": "#"
     },
     {
       "key": 3,
       "name": "Gen 3",
       "des": "3rd Generation who will grow our club positivly",
-      "link":"#"
+      "link": "#"
     },
     {
       "key": 5,
       "name": "Gen 4",
       "des": "4th Generation who will grow our club positivly",
-      "link":"#"
+      "link": "#"
     }
   ],
   "teamArray": [
@@ -247,7 +247,7 @@
       "gen": "3",
       "name": "Aritra Konar",
       "role": "Web3 Developer | Event Management",
-      "image": "https://res.cloudinary.com/dneogaofx/image/upload/v1722949092/Aritra_skm0ym.jpg",
+      "image": "https://res.cloudinary.com/dqyjrqcde/image/upload/v1788944576/WhatsApp_Image_2026-09-09_at_14.30.33_qdmt0c.jpg",
       "li": "https://www.linkedin.com/in/aritra-konar03",
       "gh": "https://github.com/Aritra203",
       "tw": "https://x.com/aritrakonar03",
