@@ -363,7 +363,17 @@ const OverviewTab = React.memo(function OverviewTab({
     { icon: Code2, label: "Community", value: "500+", gradient: "from-violet-500 to-purple-400", glowColor: "rgba(139,92,246,0.1)" },
   ];
 
-  const quickActions = [
+  interface QuickActionItem {
+    icon: React.ComponentType<{ className?: string }>;
+    label: string;
+    href?: string;
+    gradient: string;
+    description: string;
+    badge?: string;
+    onClick?: () => void;
+  }
+
+  const quickActions: QuickActionItem[] = [
     { icon: CalendarDays, label: "Browse Events", href: "/Events", gradient: "from-blue-500 to-indigo-500", description: "Explore past and upcoming events" },
     { icon: Users, label: "Meet the Team", href: "/Team", gradient: "from-emerald-500 to-teal-500", description: "Connect with club members" },
     { icon: ImageIcon, label: "View Gallery", href: "/Gallery", gradient: "from-amber-500 to-orange-500", description: "Photos from our events" },
@@ -553,7 +563,7 @@ const OverviewTab = React.memo(function OverviewTab({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <p className="font-medium text-sm text-foreground dark:text-white">{action.label}</p>
-                      {"badge" in action && action.badge && (
+                      {action.badge && (
                         <span className="text-[9px] uppercase font-mono px-1.5 py-0.2 rounded-full bg-amber-500/15 text-amber-500 border border-amber-500/30">
                           {action.badge}
                         </span>
@@ -565,7 +575,7 @@ const OverviewTab = React.memo(function OverviewTab({
                 </>
               );
 
-              if ("onClick" in action && action.onClick) {
+              if (action.onClick) {
                 return (
                   <button
                     key={action.label}
@@ -578,7 +588,7 @@ const OverviewTab = React.memo(function OverviewTab({
               }
 
               return (
-                <Link key={action.label} href={action.href} className="group flex items-center gap-3 p-3 rounded-xl hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors">
+                <Link key={action.label} href={action.href || "#"} className="group flex items-center gap-3 p-3 rounded-xl hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors">
                   {content}
                 </Link>
               );
