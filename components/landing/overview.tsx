@@ -70,7 +70,7 @@ const stats = [
 
 const Overview = () => {
   return (
-    <section className="w-full px-4 md:px-8 lg:px-16 xl:px-20 py-16 md:py-24">
+    <section className="w-full max-w-full px-4 md:px-8 lg:px-16 xl:px-20 py-16 md:py-24 overflow-hidden">
       {/* Section Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -94,7 +94,7 @@ const Overview = () => {
       </motion.div>
 
       {/* Bento Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 lg:gap-5 max-w-5xl mx-auto">
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 lg:gap-5 max-w-5xl mx-auto">
         {stats.map((stat, index) => {
           const Icon = stat.icon;
           const isFeatured = stat.featured;
@@ -122,10 +122,10 @@ const Overview = () => {
                   style={{ background: stat.glowColor }}
                 />
 
-                {/* Featured layout: horizontal | Regular: vertical center */}
+                {/* Featured layout: horizontal on sm+ | All: vertical center on mobile */}
                 <div className={`relative flex ${
                   isFeatured
-                    ? "flex-row items-center gap-6"
+                    ? "flex-col items-center justify-center gap-3 text-center sm:flex-row sm:items-center sm:text-left sm:gap-6"
                     : "flex-col items-center justify-center gap-3 text-center"
                 }`}>
                   {/* Icon */}
@@ -159,7 +159,7 @@ const Overview = () => {
                       {stat.title}
                     </p>
                     <p className={`text-muted-foreground mt-0.5 ${
-                      isFeatured ? "text-sm" : "text-xs hidden md:block"
+                      isFeatured ? "text-sm" : "text-xs hidden sm:block"
                     }`}>
                       {stat.description}
                     </p>

@@ -1,7 +1,7 @@
 import React, { Suspense } from "react";
 import type { Metadata } from "next";
 import CommunityPartnersClient from "@/components/CommunityPartnersClient";
-import { CommunityPartnersHero } from "@/components/CommunityPartnersClient";
+import CommunityPartnersHero from "@/components/CommunityPartnersHero";
 
 export const metadata: Metadata = {
   title: "Community Partners | Global Network",

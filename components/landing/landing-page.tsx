@@ -9,9 +9,9 @@ import UpcomingEvent from "@/components/landing/upcoming-events";
 
 export default function Landing() {
   return (
-    <div className="relative">
+    <div className="relative w-full max-w-full overflow-x-hidden">
         <Header />
-        <div className="relative z-10">
+        <div className="relative z-10 w-full max-w-full overflow-x-hidden">
           <UpcomingEvent />
           <div className="section-divider" />
           <Overview />

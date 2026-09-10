@@ -5,7 +5,13 @@ import { ThemeProvider } from "@/components/theme-provider";
 import Footer from '@/components/landing/footer';
 import { SplashScreen } from "@/components/ui/splash-screen";
 import NavBar from "@/components/landing/navbar";
+import ConditionalLayout from "@/components/ConditionalLayout";
 import "./globals.css";
+
+// ClerkProvider requires NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY at render time.
+// Force dynamic rendering so `next build` doesn't attempt static prerendering
+// without the key (the key is set in production via environment variables).
+export const dynamic = 'force-dynamic';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -71,7 +77,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased w-full max-w-full overflow-x-hidden`}
       >
         <script
           type="application/ld+json"
@@ -83,8 +89,9 @@ export default function RootLayout({
               "url": "https://coding-junction.in",
               "logo": "https://coding-junction.in/CodingJunction_withText_blackBackground.png",
               "sameAs": [
-                "https://github.com/your-org",
-                "https://linkedin.com/company/your-org"
+                "https://github.com/Coding-Junction",
+                "https://linkedin.com/company/coding-junction",
+                "https://www.instagram.com/codingjunction_uitbu/"
               ]
             })
           }}
@@ -113,9 +120,13 @@ export default function RootLayout({
         >
           <ClerkProvider>
             <SplashScreen />
-            <NavBar />
+            <ConditionalLayout>
+              <NavBar />
+            </ConditionalLayout>
             {children}
-            <Footer />
+            <ConditionalLayout>
+              <Footer />
+            </ConditionalLayout>
           </ClerkProvider>
         </ThemeProvider>
       </body>

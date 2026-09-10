@@ -3,8 +3,7 @@
 import { cn } from "@/lib/utils";
 import Link, { LinkProps } from "next/link";
 import React, { useState, createContext, useContext } from "react";
-import { AnimatePresence, motion } from "motion/react";
-import { Menu, X } from "lucide-react";
+import { motion } from "motion/react";
 
 interface Links {
   label: string;
@@ -84,73 +83,52 @@ export const DesktopSidebar = ({
   className,
   children,
   ...props
-}: React.ComponentProps<typeof motion.div>) => {
-  const { open, setOpen, animate } = useSidebar();
+}: React.ComponentProps<"div">) => {
+  const { open, setOpen } = useSidebar();
   return (
-    <motion.div
+    <div
       className={cn(
-        "h-full px-4 py-4 hidden md:flex md:flex-col bg-neutral-100 dark:bg-neutral-800 w-[300px] flex-shrink-0",
+        "h-full py-4 hidden md:flex md:flex-col bg-white/80 dark:bg-[#0a0b12]/95 backdrop-blur-md border-r border-black/[0.06] dark:border-white/[0.06] flex-shrink-0 z-40 overflow-hidden transition-[width,padding] duration-200 ease-out will-change-[width]",
+        open ? "w-[260px] px-4" : "w-[68px] px-2.5",
         className
       )}
-      animate={{
-        width: animate ? (open ? "300px" : "60px") : "300px",
-      }}
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
       {...props}
     >
       {children}
-    </motion.div>
+    </div>
   );
 };
 
 export const MobileSidebar = ({
   className,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   children,
   ...props
 }: React.ComponentProps<"div">) => {
-  const { open, setOpen } = useSidebar();
   return (
-    <>
-      <div
-        className={cn(
-          "h-10 px-4 py-4 flex flex-row md:hidden items-center justify-between bg-neutral-100 dark:bg-neutral-800 w-full"
-        )}
-        {...props}
-      >
-        <div className="flex justify-end z-20 w-full">
-          <Menu
-            className="text-neutral-800 dark:text-neutral-200 cursor-pointer"
-            onClick={() => setOpen(!open)}
-          />
+    <div
+      className={cn(
+        "h-14 px-4 flex flex-row md:hidden items-center justify-between bg-white/90 dark:bg-[#0a0a0f]/90 backdrop-blur-md border-b border-black/[0.06] dark:border-white/[0.06] w-full flex-shrink-0 z-30",
+        className
+      )}
+      {...props}
+    >
+      <div className="flex items-center gap-2.5">
+        <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-500 to-violet-500 flex items-center justify-center text-white font-bold shadow-md shadow-indigo-500/20">
+          <span className="font-mono text-xs font-bold">&lt;/&gt;</span>
         </div>
-        <AnimatePresence>
-          {open && (
-            <motion.div
-              initial={{ x: "-100%", opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: "-100%", opacity: 0 }}
-              transition={{
-                duration: 0.3,
-                ease: "easeInOut",
-              }}
-              className={cn(
-                "fixed h-full w-full inset-0 bg-white dark:bg-neutral-900 p-10 z-[100] flex flex-col justify-between",
-                className
-              )}
-            >
-              <div
-                className="absolute right-10 top-10 z-50 text-neutral-800 dark:text-neutral-200 cursor-pointer"
-                onClick={() => setOpen(!open)}
-              >
-                <X />
-              </div>
-              {children}
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <div className="flex flex-col">
+          <span className="font-bold text-xs tracking-tight text-foreground dark:text-white">
+            Coding Junction
+          </span>
+          <span className="text-[9px] text-muted-foreground uppercase tracking-widest font-mono">
+            Dashboard
+          </span>
+        </div>
       </div>
-    </>
+    </div>
   );
 };
 

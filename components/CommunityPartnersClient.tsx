@@ -90,7 +90,7 @@ export default function CommunityPartnersClient({ isStandalonePage = false }: { 
   };
 
   return (
-    <section className={`w-full px-4 md:px-8 lg:px-16 xl:px-20 ${isStandalonePage ? 'py-12 md:py-16' : 'py-16 md:py-24'}`}>
+    <section className={`w-full max-w-full overflow-hidden px-4 md:px-8 lg:px-16 xl:px-20 ${isStandalonePage ? 'py-12 md:py-16' : 'py-16 md:py-24'}`}>
       {/* Section Header — only on landing page, hero handles it on standalone page */}
       {!isStandalonePage && (
         <motion.div

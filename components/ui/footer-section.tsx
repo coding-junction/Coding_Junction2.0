@@ -29,11 +29,11 @@ function Footerdemo() {
   const isDarkMode = theme === "dark"
 
   return (
-    <footer className="relative border-t border-transparent bg-background text-foreground transition-colors duration-300">
+    <footer className="relative w-full max-w-full overflow-hidden border-t border-transparent bg-background text-foreground transition-colors duration-300 pb-24 md:pb-0">
       {/* Gradient top border */}
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent" />
       <div className="container mx-auto px-4 py-12 md:px-6 lg:px-8">
-        <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-4">
           <div className="relative">
             <h2 className="mb-4 text-3xl font-bold tracking-tight">Stay Connected</h2>
             <p className="mb-6 text-muted-foreground">
@@ -54,7 +54,7 @@ function Footerdemo() {
                 <span className="sr-only">Subscribe</span>
               </Button>
             </form>
-            <div className="absolute -right-4 top-0 h-24 w-24 rounded-full bg-primary/10 blur-2xl" />
+            <div className="absolute -right-4 top-0 h-24 w-24 rounded-full bg-primary/10 blur-2xl hidden md:block" />
           </div>
           <div>
             <h3 className="mb-4 text-lg font-semibold">Quick Links</h3>

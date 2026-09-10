@@ -6,6 +6,7 @@ import { Circle, Volume2, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "./button";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@clerk/nextjs";
 
 
 function HeroGeometric({
@@ -30,6 +31,7 @@ function HeroGeometric({
         }),
     };
     const router = useRouter();
+    const { isSignedIn } = useAuth();
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isMuted, setIsMuted] = useState(true);
 
@@ -105,7 +107,7 @@ function HeroGeometric({
         sym4Opacity.set(0.1 + Math.sin(t * 0.45 + 3) * 0.1);
     });
     return (
-        <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-[#030303]">
+        <div className="relative min-h-screen w-full max-w-full flex items-center justify-center overflow-hidden bg-[#030303]">
             {/* Video Background */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 <video
@@ -243,7 +245,9 @@ function HeroGeometric({
                             University Institute Of Technology, Bardhaman
                         </p>
                     </motion.div>
-                    <Button onClick={() => router.push("/sign-in")}>Get Started</Button>
+                    <Button onClick={() => router.push(isSignedIn ? "/Dashboard" : "/sign-in")}>
+                        {isSignedIn ? "Go to Dashboard" : "Get Started"}
+                    </Button>
                 </div>
             </div>
 
@@ -253,7 +257,7 @@ function HeroGeometric({
             {/* Mute/Unmute Toggle */}
             <button
                 onClick={toggleMute}
-                className="absolute bottom-6 right-6 z-20 p-3 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white/80 hover:bg-white/20 hover:text-white transition-all duration-300 cursor-pointer"
+                className="absolute bottom-6 right-4 sm:right-6 z-20 p-2.5 sm:p-3 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white/80 hover:bg-white/20 hover:text-white transition-all duration-300 cursor-pointer"
                 aria-label={isMuted ? "Unmute video" : "Mute video"}
             >
                 {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}

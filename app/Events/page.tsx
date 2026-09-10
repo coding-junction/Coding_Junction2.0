@@ -2,7 +2,7 @@ import React, { Suspense } from "react";
 import type { Metadata } from "next";
 import { sanity } from "@/lib/sanity";
 import EventsClient, { EventType } from "@/components/EventsClient";
-import { EventsHero } from "@/components/EventsClient";
+import EventsHero from "@/components/EventsHero";
 
 export const metadata: Metadata = {
   title: "Events | Coding Junction",

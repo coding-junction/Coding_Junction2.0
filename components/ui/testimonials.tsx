@@ -9,62 +9,67 @@ import {
   CarouselItem,
 } from "@/components/ui/carousel";
 import { Quote, Star } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const testimonials = [
   {
     name: "Riddhiman Das",
     role: "Core Member",
-    avatar: "https://github.com/shadcn.png",
+    avatar: "",
     initials: "RD",
     quote:
       "Coding Junction transformed my approach to problem-solving. The mentorship and collaborative environment pushed me to build projects I never thought possible.",
     rating: 5,
+    gradient: "from-blue-500 to-cyan-500",
   },
   {
     name: "Aritra Mondal",
     role: "Web Lead",
-    avatar: "https://github.com/shadcn.png",
+    avatar: "",
     initials: "AM",
     quote:
       "The web development workshops here are top-notch. I went from knowing basic HTML to building full-stack apps in just a few months.",
     rating: 5,
+    gradient: "from-indigo-500 to-violet-500",
   },
   {
     name: "Sneha Roy",
     role: "AI/ML Lead",
-    avatar: "https://github.com/shadcn.png",
+    avatar: "",
     initials: "SR",
     quote:
       "Being part of the AI/ML domain opened doors to research opportunities I didn't even know existed. Best coding community at UIT!",
     rating: 5,
+    gradient: "from-emerald-500 to-teal-500",
   },
   {
     name: "Rahul Sharma",
     role: "App Developer",
-    avatar: "https://github.com/shadcn.png",
+    avatar: "",
     initials: "RS",
     quote:
       "The hackathons organized by Coding Junction are incredibly well-managed. I've won two competitions and made lifelong friends here.",
     rating: 5,
+    gradient: "from-amber-500 to-orange-500",
   },
   {
     name: "Priya Chatterjee",
     role: "DSA Enthusiast",
-    avatar: "https://github.com/shadcn.png",
+    avatar: "",
     initials: "PC",
     quote:
       "The DSA sessions and competitive programming meetups helped me crack my dream internship. Forever grateful to this community.",
     rating: 4,
+    gradient: "from-rose-500 to-pink-500",
   },
   {
     name: "Sourav Banerjee",
     role: "Open Source Contributor",
-    avatar: "https://github.com/shadcn.png",
+    avatar: "",
     initials: "SB",
     quote:
       "Coding Junction introduced me to open source. The guidance from seniors and the culture of knowledge-sharing is truly unmatched.",
     rating: 5,
+    gradient: "from-violet-500 to-purple-500",
   },
 ];
 
@@ -174,12 +179,11 @@ function Testimonials() {
 
                         {/* Author */}
                         <div className="flex items-center gap-3">
-                          <Avatar className="h-10 w-10 border-2 border-indigo-500/30">
-                            <AvatarImage src={testimonial.avatar} />
-                            <AvatarFallback className="bg-indigo-500/20 text-indigo-300 text-xs font-semibold">
+                          <div className={`h-10 w-10 rounded-full bg-gradient-to-br ${testimonial.gradient} flex items-center justify-center shadow-md flex-shrink-0`}>
+                            <span className="text-white text-xs font-bold tracking-wide">
                               {testimonial.initials}
-                            </AvatarFallback>
-                          </Avatar>
+                            </span>
+                          </div>
                           <div>
                             <p className="text-sm font-semibold text-gray-900 dark:text-white">
                               {testimonial.name}

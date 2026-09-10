@@ -78,7 +78,7 @@ export function AnimeNavBar({
       {/* Semantic Nav Container */}
       <nav
         className={cn(
-          "fixed left-0 right-0 z-[9999] pointer-events-none flex justify-center w-full",
+          "fixed left-0 right-0 z-[9999] pointer-events-none flex justify-center w-full px-2 sm:px-4",
           isMobile ? "bottom-6" : "top-11",
           className
         )}
@@ -87,7 +87,7 @@ export function AnimeNavBar({
           className={cn(
             "flex items-center bg-black/50 border border-white/10 backdrop-blur-lg rounded-full shadow-lg relative pointer-events-auto",
             isMobile
-              ? "gap-1 py-1 px-1 max-w-[95vw] overflow-x-auto"
+              ? "gap-0.5 sm:gap-1 py-1 px-1.5 max-w-[95vw] overflow-x-auto no-scrollbar"
               : "gap-3 py-2 px-2"
           )}
           initial={{ y: -20, opacity: 0 }}
@@ -138,7 +138,7 @@ export function AnimeNavBar({
                 className={cn(
                   "relative cursor-pointer font-semibold rounded-full transition-all duration-300 whitespace-nowrap select-none",
                   isMobile
-                    ? "text-base px-3 py-2"
+                    ? "text-xs px-2.5 py-1.5 sm:px-3 sm:py-2"
                     : "text-sm px-6 py-3",
                   "text-white/70 hover:text-white",
                   isActive && "text-white"

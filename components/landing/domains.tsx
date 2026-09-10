@@ -61,7 +61,7 @@ const domains = [
 
 const Domains = () => {
   return (
-    <section className="w-full px-4 md:px-8 lg:px-16 xl:px-20 py-16 md:py-24">
+    <section className="w-full max-w-full px-4 md:px-8 lg:px-16 xl:px-20 py-16 md:py-24 overflow-hidden">
       {/* Section Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
