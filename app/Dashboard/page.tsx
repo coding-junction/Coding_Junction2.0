@@ -9,13 +9,18 @@ import {
   CalendarDays, ArrowRight, ExternalLink, Sparkles, BookOpen,
   Users, MapPin, Bell, Bookmark, GraduationCap, Globe,
   Smartphone, ImageIcon, Clock, ChevronRight, Star, Zap, Award,
-  ShieldCheck, ShieldAlert, Building2, CheckCircle2
+  ShieldCheck, ShieldAlert, Building2, CheckCircle2, Ticket
 } from "lucide-react";
 import { SignedIn, UserButton, useUser } from "@clerk/nextjs";
 import { sanity } from "@/lib/sanity";
 import { motion, AnimatePresence } from "motion/react";
 import { CertificatesTab } from "@/components/dashboard/CertificatesTab";
 import { CollegeVerificationModal, VerifiedCollegeData } from "@/components/dashboard/CollegeVerificationModal";
+import { MembershipCard } from "@/components/dashboard/MembershipCard";
+import { EventPassesTab } from "@/components/dashboard/EventPassesTab";
+import { LeaderboardTab } from "@/components/dashboard/LeaderboardTab";
+import { ResourcesTab } from "@/components/dashboard/ResourcesTab";
+import { NotificationCenter } from "@/components/dashboard/NotificationCenter";
 
 /* ─── Types ─── */
 interface SanityEvent {
@@ -30,8 +35,7 @@ interface SanityEvent {
 }
 
 /* ─── Dashboard Tabs ─── */
-/* ─── Dashboard Tabs ─── */
-type TabKey = "overview" | "events" | "certificates" | "profile" | "resources" | "settings";
+type TabKey = "overview" | "events" | "passes" | "leaderboard" | "certificates" | "profile" | "resources" | "settings";
 
 /* ─── Standardized Nav Tabs ─── */
 const navTabs: {
@@ -42,6 +46,8 @@ const navTabs: {
 }[] = [
   { key: "overview", label: "Overview", icon: LayoutDashboard },
   { key: "events", label: "Events", icon: CalendarDays },
+  { key: "passes", label: "Event Passes", icon: Ticket, badge: "Soon" },
+  { key: "leaderboard", label: "Leaderboard", icon: Trophy, badge: "Soon" },
   { key: "certificates", label: "Certificates", icon: Award, badge: "Soon" },
   { key: "profile", label: "Profile", icon: UserCog },
   { key: "resources", label: "Resources", icon: BookOpen },
@@ -102,7 +108,7 @@ function DashboardSidebarNav({
                     : "text-muted-foreground hover:text-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
                 }`}
               >
-                <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? (item.key === "certificates" ? "text-amber-500" : "text-indigo-500 dark:text-indigo-400") : ""}`} />
+                <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? (item.badge ? "text-amber-500" : "text-indigo-500 dark:text-indigo-400") : ""}`} />
                 {open && (
                   <div className="flex items-center justify-between flex-1 min-w-0">
                     <span className="truncate">{item.label}</span>
@@ -153,10 +159,21 @@ const DashboardMain = () => {
   useEffect(() => {
     if (isLoaded && user) {
       const meta = user.unsafeMetadata?.collegeVerification as VerifiedCollegeData | undefined;
-      if (meta?.isVerified) {
-        setVerificationData(meta);
+      if (meta?.isVerified && meta?.verifiedAt) {
+        const verifiedTime = new Date(meta.verifiedAt).getTime();
+        const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+        const isExpired = isNaN(verifiedTime) || (Date.now() - verifiedTime) >= ONE_YEAR_MS;
+
+        if (isExpired) {
+          // 1 Year has elapsed: Annual verification expired, revoke pass & auto-trigger modal
+          setVerificationData(null);
+          setIsVerificationModalOpen(true);
+        } else {
+          setVerificationData(meta);
+        }
       } else {
-        // Automatically prompt unverified students on first login
+        // Automatically prompt unverified students on login
+        setVerificationData(null);
         setIsVerificationModalOpen(true);
       }
     }
@@ -226,7 +243,7 @@ const DashboardMain = () => {
             <span className="text-muted-foreground/40 text-xs hidden sm:inline">/</span>
             <span className="text-xs font-bold text-foreground dark:text-white capitalize flex items-center gap-1.5">
               {activeTab}
-              {activeTab === "certificates" && (
+              {(activeTab === "certificates" || activeTab === "passes" || activeTab === "leaderboard") && (
                 <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded-full bg-amber-500/15 text-amber-500 dark:text-amber-400 border border-amber-500/30">
                   Soon
                 </span>
@@ -257,7 +274,7 @@ const DashboardMain = () => {
                     />
                   )}
                   <span className="relative z-10 flex items-center gap-1.5">
-                    <Icon className={`w-3.5 h-3.5 ${isActive ? (tab.key === "certificates" ? "text-amber-400" : "text-indigo-500") : ""}`} />
+                    <Icon className={`w-3.5 h-3.5 ${isActive ? (tab.badge ? "text-amber-400" : "text-indigo-500") : ""}`} />
                     <span>{tab.label}</span>
                     {tab.badge && (
                       <span className="text-[8px] uppercase font-bold tracking-wider px-1 py-0.2 rounded bg-amber-500/15 text-amber-500 dark:text-amber-400 border border-amber-500/30">
@@ -280,10 +297,13 @@ const DashboardMain = () => {
               <span className="hidden sm:inline">Website</span>
             </Link>
 
-            <button className="relative p-2 rounded-xl hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors cursor-pointer border border-transparent hover:border-black/[0.04] dark:hover:border-white/[0.04]">
-              <Bell className="h-4 w-4 text-muted-foreground" />
-              <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse" />
-            </button>
+            <NotificationCenter
+              events={events}
+              user={user}
+              verificationData={verificationData}
+              onOpenVerification={() => setIsVerificationModalOpen(true)}
+              onNavigateTab={(tab) => setActiveTab(tab as TabKey)}
+            />
 
             <SignedIn>
               <div className="p-0.5 rounded-full border border-black/[0.08] dark:border-white/[0.08]">
@@ -310,7 +330,33 @@ const DashboardMain = () => {
                 onOpenVerification={() => setIsVerificationModalOpen(true)}
               />
             )}
-            {activeTab === "events" && <EventsTab key="events" upcomingEvents={upcomingEvents} pastEvents={pastEvents} eventsLoading={eventsLoading} />}
+            {activeTab === "events" && (
+              <EventsTab
+                key="events"
+                upcomingEvents={upcomingEvents}
+                pastEvents={pastEvents}
+                eventsLoading={eventsLoading}
+                onGoToPasses={() => setActiveTab("passes")}
+              />
+            )}
+            {activeTab === "passes" && (
+              <EventPassesTab
+                key="passes"
+                user={user}
+                upcomingEvents={upcomingEvents}
+                pastEvents={pastEvents}
+                eventsLoading={eventsLoading}
+                onBrowseEvents={() => setActiveTab("events")}
+              />
+            )}
+            {activeTab === "leaderboard" && (
+              <LeaderboardTab
+                key="leaderboard"
+                user={user}
+                verificationData={verificationData}
+                totalEvents={events.length}
+              />
+            )}
             {activeTab === "certificates" && <CertificatesTab key="certificates" user={user} onBrowseEvents={() => setActiveTab("events")} />}
             {activeTab === "profile" && (
               <ProfileTab
@@ -659,15 +705,47 @@ const OverviewTab = React.memo(function OverviewTab({
    TAB: Events
    ═══════════════════════════════════════════════ */
 const EventsTab = React.memo(function EventsTab({
-  upcomingEvents, pastEvents, eventsLoading,
+  upcomingEvents, pastEvents, eventsLoading, onGoToPasses,
 }: {
   upcomingEvents: SanityEvent[]; pastEvents: SanityEvent[]; eventsLoading: boolean;
+  onGoToPasses?: () => void;
 }) {
   const [filter, setFilter] = useState<"all" | "upcoming" | "past">("all");
   const displayEvents = filter === "upcoming" ? upcomingEvents : filter === "past" ? pastEvents : [...upcomingEvents, ...pastEvents];
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
+      {/* Digital Entry Passes Banner */}
+      {onGoToPasses && (
+        <button
+          onClick={onGoToPasses}
+          className="w-full mb-6 p-3.5 rounded-2xl bg-gradient-to-r from-indigo-500/10 via-violet-500/10 to-transparent border border-indigo-500/20 hover:border-indigo-500/40 flex items-center justify-between gap-3 text-left transition-all cursor-pointer group shadow-sm"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-indigo-500/15 text-indigo-500 flex items-center justify-center flex-shrink-0">
+              <Ticket className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-foreground dark:text-white truncate">
+                  Digital Event Passes & Entry Tickets
+                </span>
+                <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded-full bg-amber-500/15 text-amber-500 border border-amber-500/30 flex-shrink-0">
+                  Coming Soon
+                </span>
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
+                View your registered event passes, scannable check-in QR codes & Google Calendar sync.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1 text-xs font-mono text-indigo-500 font-semibold flex-shrink-0">
+            <span>Open Passes</span>
+            <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+          </div>
+        </button>
+      )}
+
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-bold text-foreground dark:text-white">Events</h2>
@@ -801,24 +879,29 @@ const ProfileTab = React.memo(function ProfileTab({
         <p className="text-sm text-muted-foreground mt-1">Manage your account information and view club credentials.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Profile Card */}
-        <div className="md:col-span-1 rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0c0d14] p-6 text-center shadow-sm">
-          {user?.imageUrl && (
-            <div className="w-24 h-24 rounded-2xl overflow-hidden mx-auto mb-4 border-2 border-indigo-500/20 shadow-lg shadow-indigo-500/10">
-              <Image src={user.imageUrl} alt={user.fullName || "User"} width={96} height={96} className="w-full h-full object-cover" />
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+        {/* Digital Membership Pass (Interactive 3D Card) */}
+        <div className="lg:col-span-2 rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0c0d14] p-5 sm:p-6 shadow-sm flex flex-col items-center">
+          <div className="w-full flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-indigo-500" />
+              <h4 className="font-bold text-foreground dark:text-white text-sm">Official Member Pass</h4>
             </div>
-          )}
-          <h3 className="text-lg font-bold text-foreground dark:text-white">{user?.fullName || "User"}</h3>
-          <p className="text-sm text-muted-foreground mt-1">{user?.primaryEmailAddress?.emailAddress || ""}</p>
-          <div className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold border border-indigo-500/20">
-            <Sparkles className="h-3 w-3" />
-            Community Member
+            <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground bg-black/[0.04] dark:bg-white/[0.04] px-2 py-0.5 rounded-md">
+              3D Interactive
+            </span>
           </div>
+
+          <MembershipCard
+            user={user}
+            memberSince={memberSince}
+            verificationData={verificationData}
+            onOpenVerification={onOpenVerification}
+          />
         </div>
 
         {/* Details */}
-        <div className="md:col-span-2 rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0c0d14] p-6 shadow-sm">
+        <div className="lg:col-span-3 rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0c0d14] p-6 shadow-sm">
           <h4 className="font-semibold text-foreground dark:text-white text-sm mb-4">Account Details</h4>
           <div className="space-y-4">
             {[
@@ -958,90 +1041,6 @@ const ProfileTab = React.memo(function ProfileTab({
             );
           })}
         </div>
-      </div>
-    </motion.div>
-  );
-});
-
-/* ═══════════════════════════════════════════════
-   TAB: Resources
-   ═══════════════════════════════════════════════ */
-const ResourcesTab = React.memo(function ResourcesTab() {
-  const resources = [
-    {
-      category: "Learning Paths",
-      icon: GraduationCap,
-      gradient: "from-blue-500 to-indigo-500",
-      items: [
-        { name: "Web Development Roadmap", url: "https://roadmap.sh/frontend", desc: "Frontend & backend learning path" },
-        { name: "DSA Practice", url: "https://leetcode.com", desc: "Data structures & algorithms" },
-        { name: "System Design", url: "https://github.com/donnemartin/system-design-primer", desc: "Scalable system design guide" },
-      ],
-    },
-    {
-      category: "Community Tools",
-      icon: Code2,
-      gradient: "from-emerald-500 to-teal-500",
-      items: [
-        { name: "GitHub Organization", url: "https://github.com/Coding-Junction", desc: "Our open-source projects" },
-        { name: "Coding Junction App", url: "/mobile-app", desc: "Stay connected on the go" },
-        { name: "Community Partners", url: "/CommunityPartners", desc: "Our partner organizations" },
-      ],
-    },
-    {
-      category: "Useful Platforms",
-      icon: Globe,
-      gradient: "from-violet-500 to-purple-500",
-      items: [
-        { name: "Devfolio", url: "https://devfolio.co", desc: "Find and join hackathons" },
-        { name: "Unstop", url: "https://unstop.com", desc: "Competitions & opportunities" },
-        { name: "freeCodeCamp", url: "https://freecodecamp.org", desc: "Free coding curriculum" },
-      ],
-    },
-  ];
-
-  return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-foreground dark:text-white">Resources</h2>
-        <p className="text-sm text-muted-foreground mt-1">Curated links and tools to accelerate your learning journey.</p>
-      </div>
-
-      <div className="space-y-6">
-        {resources.map((section) => {
-          const SectionIcon = section.icon;
-          return (
-            <div
-              key={section.category}
-              className="rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0c0d14] overflow-hidden shadow-sm"
-            >
-              <div className="flex items-center gap-3 p-5 border-b border-black/[0.06] dark:border-white/[0.06]">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center bg-gradient-to-br ${section.gradient} shadow-md`}>
-                  <SectionIcon className="h-4 w-4 text-white" />
-                </div>
-                <h3 className="font-semibold text-foreground dark:text-white text-sm">{section.category}</h3>
-              </div>
-              <div className="divide-y divide-black/[0.04] dark:divide-white/[0.04]">
-                {section.items.map((item) => (
-                  <a
-                    key={item.name}
-                    href={item.url}
-                    target={item.url.startsWith("/") ? undefined : "_blank"}
-                    rel={item.url.startsWith("/") ? undefined : "noopener noreferrer"}
-                    className="group flex items-center gap-3 px-5 py-3.5 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors"
-                  >
-                    <Bookmark className="h-4 w-4 text-muted-foreground group-hover:text-indigo-500 transition-colors flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground dark:text-white">{item.name}</p>
-                      <p className="text-[11px] text-muted-foreground">{item.desc}</p>
-                    </div>
-                    <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-                  </a>
-                ))}
-              </div>
-            </div>
-          );
-        })}
       </div>
     </motion.div>
   );

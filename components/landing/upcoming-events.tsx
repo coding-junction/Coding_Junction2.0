@@ -10,8 +10,9 @@ interface EventType {
   title: string;
   date?: string;
   location?: string;
-  description: string;
+  description?: string;
   tag?: string;
+  images?: { asset?: { _id?: string; url: string } }[];
   image?: {
     asset?: {
       url: string;
@@ -27,14 +28,15 @@ const Event = () => {
   useEffect(() => {
     sanity
       .fetch(
-        `*[_type == "post"]{
+        `*[_type in ["event", "post"]] | order(date desc) {
           _id,
           title,
           date,
           location,
           description,
           tag,
-          image{asset->{url}},
+          images[]{ asset->{ _id, url } },
+          image{ asset->{ url } },
           registerLink
         }`
       )
@@ -108,21 +110,24 @@ const Event = () => {
             <div className="glass-card group">
               <div className="glass-card-inner p-8 sm:p-10 flex flex-col items-center">
                 {/* Event image */}
-                {event.image?.asset?.url ? (
-                  <div className="relative w-full max-w-sm rounded-xl overflow-hidden mb-6">
-                    <Image
-                      src={event.image.asset.url}
-                      alt={event.title}
-                      height={340}
-                      width={340}
-                      className="object-cover rounded-xl w-full border border-black/5 dark:border-white/10 transition-transform duration-500 group-hover:scale-105"
-                    />
-                  </div>
-                ) : (
-                  <div className="w-full max-w-sm h-[200px] flex items-center justify-center bg-gray-100 dark:bg-white/5 rounded-xl mb-6 border border-border">
-                    <CalendarDays className="h-10 w-10 text-muted-foreground" />
-                  </div>
-                )}
+                {(() => {
+                  const imgUrl = event.images?.[0]?.asset?.url || event.image?.asset?.url;
+                  return imgUrl ? (
+                    <div className="relative w-full max-w-sm rounded-xl overflow-hidden mb-6">
+                      <Image
+                        src={imgUrl}
+                        alt={event.title}
+                        height={340}
+                        width={340}
+                        className="object-cover rounded-xl w-full border border-black/5 dark:border-white/10 transition-transform duration-500 group-hover:scale-105"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-full max-w-sm h-[200px] flex items-center justify-center bg-gray-100 dark:bg-white/5 rounded-xl mb-6 border border-border">
+                      <CalendarDays className="h-10 w-10 text-muted-foreground" />
+                    </div>
+                  );
+                })()}
 
                 {/* Tag */}
                 {event.tag && (
