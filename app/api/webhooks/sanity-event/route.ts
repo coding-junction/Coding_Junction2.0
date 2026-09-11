@@ -13,10 +13,12 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const isTest = searchParams.get("test") === "true";
+  const broadcastLatest = searchParams.get("broadcastLatest") === "true";
   const testRecipient = searchParams.get("to") || process.env.SMTP_USER;
 
   const smtpCheck = await verifySmtpConnection();
 
+  // Test mode: Send dummy test email
   if (isTest && testRecipient) {
     if (!smtpCheck.ok) {
       return NextResponse.json(
@@ -57,6 +59,79 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Broadcast Latest: Send the real latest event from Sanity (e.g. CJ Got Talent)
+  if (broadcastLatest) {
+    if (!smtpCheck.ok) {
+      return NextResponse.json(
+        { success: false, error: `Cannot broadcast: ${smtpCheck.message}` },
+        { status: 500 }
+      );
+    }
+
+    try {
+      const latestEvent = await sanity.fetch(
+        `*[_type in ["event", "post"]] | order(_createdAt desc)[0]{
+          title,
+          date,
+          location,
+          description,
+          registerLink,
+          "imageUrl": coalesce(image.asset->url, images[0].asset->url)
+        }`
+      );
+
+      if (!latestEvent) {
+        return NextResponse.json({ error: "No events or posts found in Sanity." }, { status: 404 });
+      }
+
+      let recipients: string[] = [];
+      if (searchParams.has("to") && testRecipient) {
+        recipients = [testRecipient];
+      } else {
+        const clerkKey = process.env.CLERK_SECRET_KEY;
+        if (!clerkKey) {
+          return NextResponse.json(
+            { error: "CLERK_SECRET_KEY is not configured." },
+            { status: 500 }
+          );
+        }
+        const clerk = createClerkClient({ secretKey: clerkKey });
+        const userList = await clerk.users.getUserList({ limit: 100 });
+        recipients = userList.data
+          .map((u) => u.primaryEmailAddress?.emailAddress)
+          .filter((email): email is string => Boolean(email));
+      }
+
+      const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://coding-junction.in";
+      const broadcastResult = await broadcastEventEmail({
+        recipients,
+        event: {
+          title: latestEvent.title,
+          date: latestEvent.date,
+          location: latestEvent.location,
+          description: latestEvent.description,
+          imageUrl: latestEvent.imageUrl,
+          registerLink: latestEvent.registerLink,
+          siteUrl,
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: `Dispatched latest event '${latestEvent.title}' to ${broadcastResult.sentCount} recipient(s).`,
+        result: broadcastResult,
+      });
+    } catch (err: any) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Broadcast failed: ${err.message || String(err)}`,
+        },
+        { status: 500 }
+      );
+    }
+  }
+
   return NextResponse.json({
     status: "online",
     endpoint: "/api/webhooks/sanity-event",
@@ -91,10 +166,10 @@ export async function POST(req: NextRequest) {
     const eventId = body._id || body.id;
     const documentType = body._type || body.type;
 
-    // Ensure it's an event document
-    if (documentType && documentType !== "event") {
+    // Ensure it's an event or post document
+    if (documentType && !["event", "post"].includes(documentType)) {
       return NextResponse.json(
-        { message: `Ignored document type '${documentType}'. Only 'event' triggers emails.` },
+        { message: `Ignored document type '${documentType}'. Only 'event' and 'post' trigger announcement emails.` },
         { status: 200 }
       );
     }

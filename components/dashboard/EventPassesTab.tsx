@@ -59,10 +59,13 @@ export const EventPassesTab: React.FC<EventPassesTabProps> = ({
   const userId = user?.id || "USER_ANON";
   const userName = user?.fullName || user?.firstName || "Community Member";
 
-  // Load RSVP'd event IDs from localStorage
+  // Load RSVP'd event IDs from localStorage (clean v2 key, no auto-registration)
   useEffect(() => {
     try {
-      const saved = localStorage.getItem("cj_registered_event_ids");
+      // Clear legacy auto-registration key from past demo
+      localStorage.removeItem("cj_registered_event_ids");
+
+      const saved = localStorage.getItem("cj_registered_event_ids_v2");
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
@@ -74,11 +77,8 @@ export const EventPassesTab: React.FC<EventPassesTabProps> = ({
       // Fallback
     }
 
-    // Default RSVP to the first upcoming event if available for rich demo
-    if (upcomingEvents.length > 0) {
-      setRegisteredEventIds([upcomingEvents[0]._id]);
-    }
-  }, [upcomingEvents]);
+    setRegisteredEventIds([]);
+  }, []);
 
   // Save registered events to localStorage
   const handleToggleRSVP = (eventId: string, e?: React.MouseEvent) => {
@@ -88,7 +88,7 @@ export const EventPassesTab: React.FC<EventPassesTabProps> = ({
         ? prev.filter((id) => id !== eventId)
         : [...prev, eventId];
       try {
-        localStorage.setItem("cj_registered_event_ids", JSON.stringify(next));
+        localStorage.setItem("cj_registered_event_ids_v2", JSON.stringify(next));
       } catch {
         // Continue
       }
@@ -286,7 +286,7 @@ export const EventPassesTab: React.FC<EventPassesTabProps> = ({
               </div>
               <h4 className="font-bold text-foreground dark:text-white text-base">No Active Passes</h4>
               <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-                You haven&apos;t marked attendance for any upcoming events yet. Explore events and click &ldquo;RSVP / Register&rdquo; to generate your pass.
+                You haven&apos;t registered for any event passes yet. Digital entry passes will appear here once the feature goes live.
               </p>
               <button
                 onClick={() => setActiveSubTab("browse")}
@@ -430,10 +430,10 @@ function TicketCard({
   userId,
   userName,
   isRegistered,
-  onToggleRSVP,
+  onToggleRSVP: _onToggleRSVP,
   onViewPass,
   onGoogleCalendar,
-  onDownloadICal,
+  onDownloadICal: _onDownloadICal,
 }: {
   event: SanityEvent;
   userId: string;
@@ -457,8 +457,6 @@ function TicketCard({
     return `${hours} hours left`;
   }, [event.date]);
 
-  const ticketId = `CJ-EVT-${event._id.slice(-4).toUpperCase()}-${userId.replace("user_", "").slice(-4).toUpperCase()}`;
-
   return (
     <div className="rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0c0d14] overflow-hidden shadow-sm hover:border-indigo-500/30 transition-all flex flex-col justify-between">
       <div className="p-5">
@@ -468,10 +466,10 @@ function TicketCard({
             className={`text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
               isRegistered
                 ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
-                : "bg-black/[0.04] dark:bg-white/[0.04] text-muted-foreground border-black/[0.08] dark:border-white/[0.08]"
+                : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30"
             }`}
           >
-            {isRegistered ? "Ticket Confirmed" : "RSVP Open"}
+            {isRegistered ? "Ticket Confirmed" : "Passes Coming Soon"}
           </span>
 
           {countdown && (
@@ -523,17 +521,21 @@ function TicketCard({
       {/* Bottom Action Footer */}
       <div className="p-3 bg-black/[0.02] dark:bg-white/[0.02] border-t border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
-          {/* Toggle RSVP button */}
-          <button
-            onClick={onToggleRSVP}
-            className={`px-2.5 py-1.5 rounded-lg text-xs font-mono font-semibold cursor-pointer transition-all ${
-              isRegistered
-                ? "bg-emerald-500/10 hover:bg-rose-500/10 text-emerald-600 dark:text-emerald-400 hover:text-rose-500 border border-emerald-500/25"
-                : "bg-indigo-500 text-white hover:opacity-90 shadow-sm"
-            }`}
-          >
-            {isRegistered ? "Registered ✓" : "RSVP Now"}
-          </button>
+          {event.registerLink ? (
+            <a
+              href={event.registerLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500 text-white text-xs font-mono font-semibold hover:opacity-90 transition-opacity shadow-sm"
+            >
+              <span>Register</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          ) : (
+            <span className="text-[11px] font-mono text-muted-foreground px-2 py-1 rounded bg-black/[0.03] dark:bg-white/[0.04]">
+              Details Announced
+            </span>
+          )}
 
           {/* Sync Calendar */}
           <button
@@ -545,14 +547,20 @@ function TicketCard({
           </button>
         </div>
 
-        {/* View Entry QR Pass Modal Trigger */}
-        <button
-          onClick={onViewPass}
-          className="px-2.5 py-1.5 rounded-lg bg-black/[0.04] dark:bg-white/[0.04] hover:bg-black/[0.08] dark:hover:bg-white/[0.08] text-xs font-mono font-semibold text-foreground dark:text-white flex items-center gap-1.5 transition-colors cursor-pointer border border-black/[0.06] dark:border-white/[0.06]"
-        >
-          <QrCode className="w-3.5 h-3.5 text-indigo-500" />
-          <span>View Pass</span>
-        </button>
+        {/* If registered, show View Pass. If not, show Coming Soon status */}
+        {isRegistered ? (
+          <button
+            onClick={onViewPass}
+            className="px-2.5 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-mono font-semibold flex items-center gap-1.5 transition-colors cursor-pointer border border-indigo-500/25"
+          >
+            <QrCode className="w-3.5 h-3.5" />
+            <span>View Pass</span>
+          </button>
+        ) : (
+          <span className="text-[10px] font-mono text-muted-foreground uppercase px-2 py-1 rounded-md bg-black/[0.04] dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06]">
+            Passes Soon
+          </span>
+        )}
       </div>
     </div>
   );

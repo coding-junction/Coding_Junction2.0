@@ -125,7 +125,8 @@ export function NotificationCenter({
       setDismissedIds(mergedDismissed);
       setLastMarkedAllReadAt(mergedMarkedAllReadAt);
 
-      const savedPasses = localStorage.getItem("cj_registered_event_ids");
+      localStorage.removeItem("cj_registered_event_ids");
+      const savedPasses = localStorage.getItem("cj_registered_event_ids_v2");
       if (savedPasses) setRegisteredEventIds(JSON.parse(savedPasses));
     } catch {
       // ignore
