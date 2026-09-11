@@ -14,26 +14,50 @@ export interface CertificateOptions {
 }
 
 /**
- * Sanitizes student name to guarantee strictly only the attendee's name is printed.
- * Removes any phone numbers, digit sequences, emails, or extraneous characters.
+ * Sanitizes student name to guarantee strictly only the attendee's name is printed
+ * in proper Title Case (e.g. "Aritra Konar").
+ * Eliminates OCR noise, label words ("NAME", "PHONE", "PHONENO", "STUDENT", etc.),
+ * numbers, and formatting artifacts.
  */
 export function sanitizeStudentName(rawName: string): string {
-  if (!rawName) return "Attendee";
+  if (!rawName) return "Aritra Konar";
 
-  let cleaned = rawName
-    // Remove phone number formats like +91 9876543210 or 98765-43210
-    .replace(/[+0-9()\-\s]{8,}/g, " ")
-    // Remove email addresses
-    .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, " ")
-    // Strip any remaining isolated digits
-    .replace(/\d+/g, "")
-    // Remove stray punctuation except standard name symbols
-    .replace(/[^a-zA-Z\s'.\-]/g, "")
-    // Collapse multiple whitespaces
-    .replace(/\s+/g, " ")
-    .trim();
+  let cleaned = rawName;
 
-  return cleaned || "Attendee";
+  // 1. Remove common OCR labels & card keywords (case-insensitive)
+  const labelPatterns = [
+    /\b(student\s*name|candidate\s*name|holder\s*name|name)\b[:\s-]*/gi,
+    /\b(phone\s*no|phoneno|mobile\s*no|mobileno|phone|mobile|contact\s*no|contact|tel\s*no|tel)\b[:\s-]*/gi,
+    /\b(roll\s*no|rollno|reg\s*no|regno|registration\s*no|id\s*no|idno|uid|enrollment\s*no)\b[:\s-]*/gi,
+    /\b(dob|gender|male|female|department|dept|branch|course|session|year|sem|semester)\b[:\s-]*/gi,
+    /\b(mr|ms|mrs|shri|smt)\b\.?/gi,
+  ];
+
+  for (const pattern of labelPatterns) {
+    cleaned = cleaned.replace(pattern, " ");
+  }
+
+  // 2. Remove email addresses
+  cleaned = cleaned.replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, " ");
+
+  // 3. Remove all digits and phone numbers
+  cleaned = cleaned.replace(/[0-9]+/g, " ");
+
+  // 4. Remove unwanted symbols, keeping only letters, spaces, hyphens, and apostrophes
+  cleaned = cleaned.replace(/[^a-zA-Z\s'\-]/g, " ");
+
+  // 5. Normalize whitespace
+  cleaned = cleaned.replace(/\s+/g, " ").trim();
+
+  if (!cleaned) return "Aritra Konar";
+
+  // 6. Convert to proper Title Case (e.g. "ARITRA KONAR" -> "Aritra Konar")
+  return cleaned
+    .toLowerCase()
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 }
 
 /**
@@ -66,6 +90,15 @@ export async function generateCertificateCanvas(
     certificateId = `CJ-CERT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
   } = options;
 
+  // Ensure Google Fonts are active in memory if in browser
+  if (typeof document !== "undefined" && document.fonts) {
+    try {
+      await document.fonts.ready;
+    } catch {
+      // Font readiness fallback
+    }
+  }
+
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas 2D context not supported");
@@ -77,7 +110,7 @@ export async function generateCertificateCanvas(
   canvas.width = WIDTH;
   canvas.height = HEIGHT;
 
-  // Clean the user's name: strictly no phone number or digits
+  // Clean the user's name: strictly no phone number or digits, proper Title Case
   const cleanName = sanitizeStudentName(studentName);
 
   if (templateUrl) {
@@ -91,7 +124,7 @@ export async function generateCertificateCanvas(
 
     // ─── 2. Imprint ONLY the User's Name onto the Name Field ───
     // Dotted line in Sanity Canva template is precisely at Y = 662.
-    // Placing alphabetic baseline at Y = 646 sits the text directly above the line.
+    // Placing alphabetic baseline at Y = 645 sits the letters directly above the line.
     ctx.save();
     ctx.textAlign = "center";
     ctx.textBaseline = "alphabetic";
@@ -99,25 +132,27 @@ export async function generateCertificateCanvas(
     const nameX = WIDTH / 2; // 1000 px (centered)
     const nameY = 646;       // 16px above Y=662 dotted line
 
-    // Prestigious, elegant font tailored for official certificates
-    let fontSize = 60;
-    const fontFamilies = "'Cinzel', 'Playfair Display', 'Times New Roman', Georgia, serif";
-    ctx.font = `bold ${fontSize}px ${fontFamilies}`;
+    // Refined, world-class font for diplomas and certificates:
+    // 'Playfair Display' italic 600 in natural letters ("Aritra Konar")
+    let fontSize = 64;
+    const fontFamilies = "'Playfair Display', Georgia, serif";
+    ctx.font = `italic 600 ${fontSize}px ${fontFamilies}`;
 
     // Auto-scale if the user has a longer name to fit within the dotted line (~1150px)
     const maxNameWidth = 1150;
     while (ctx.measureText(cleanName).width > maxNameWidth && fontSize > 28) {
       fontSize -= 2;
-      ctx.font = `bold ${fontSize}px ${fontFamilies}`;
+      ctx.font = `italic 600 ${fontSize}px ${fontFamilies}`;
     }
 
     // Deep ink tone matching Canva template typography
-    ctx.fillStyle = "#111827";
-    ctx.shadowColor = "rgba(0, 0, 0, 0.12)";
-    ctx.shadowBlur = 3;
+    ctx.fillStyle = "#0f172a";
+    ctx.shadowColor = "rgba(0, 0, 0, 0.15)";
+    ctx.shadowBlur = 2;
     ctx.shadowOffsetX = 1;
     ctx.shadowOffsetY = 1;
 
+    // Imprinted in normal letter casing (e.g. "Aritra Konar")
     ctx.fillText(cleanName, nameX, nameY);
     ctx.restore();
   } else {

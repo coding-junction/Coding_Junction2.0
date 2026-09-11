@@ -124,14 +124,37 @@ export const CertificatesTab = React.memo(function CertificatesTab({
 
   const firstName = user?.firstName || user?.fullName?.split(" ")[0] || "there";
 
-  // Sanitize user name so strictly ONLY the name is imprinted — never phone numbers, emails, or digits
-  const rawStudentName =
-    verificationData?.studentName ||
+  // ─── Student Name Resolution ───
+  // Prioritize clean profile name from Clerk account over raw OCR scanned ID text
+  const accountName = (
     user?.fullName ||
-    `${user?.firstName || ""} ${user?.lastName || ""}`.trim() ||
+    `${user?.firstName || ""} ${user?.lastName || ""}`
+  ).trim();
+
+  const candidateRawName =
+    (accountName && accountName.length >= 2 ? accountName : "") ||
+    verificationData?.studentName ||
     "Aritra Konar";
 
-  const studentFullName = sanitizeStudentName(rawStudentName);
+  const defaultCleanName = sanitizeStudentName(candidateRawName);
+
+  const [studentFullName, setStudentFullName] = useState<string>(defaultCleanName);
+
+  // Sync when user profile or verification data changes
+  useEffect(() => {
+    const accName = (
+      user?.fullName ||
+      `${user?.firstName || ""} ${user?.lastName || ""}`
+    ).trim();
+
+    const candidate =
+      (accName && accName.length >= 2 ? accName : "") ||
+      verificationData?.studentName ||
+      "Aritra Konar";
+
+    setStudentFullName(sanitizeStudentName(candidate));
+  }, [user?.fullName, user?.firstName, user?.lastName, verificationData?.studentName]);
+
   const collegeName = verificationData?.collegeName || "University Institute of Technology, Burdwan University";
 
   const selectedCertificate =
@@ -362,13 +385,17 @@ export const CertificatesTab = React.memo(function CertificatesTab({
 
               <div>
                 <label className="text-xs font-mono text-muted-foreground block mb-1.5">
-                  Imprinted Name (Exclusively Student Name)
+                  Imprinted Name (Certificate Holder)
                 </label>
-                <div className="p-2.5 rounded-xl bg-black/[0.03] dark:bg-white/[0.05] border border-black/[0.08] dark:border-white/[0.1] text-xs font-semibold text-foreground dark:text-white">
-                  {studentFullName}
-                </div>
+                <input
+                  type="text"
+                  value={studentFullName}
+                  onChange={(e) => setStudentFullName(e.target.value)}
+                  placeholder="e.g. Aritra Konar"
+                  className="w-full text-xs font-semibold p-2.5 rounded-xl bg-black/[0.03] dark:bg-white/[0.05] border border-black/[0.08] dark:border-white/[0.1] text-foreground dark:text-white outline-none focus:border-indigo-500 transition-colors"
+                />
                 <p className="text-[10px] font-mono text-muted-foreground/70 mt-1">
-                  * Only real attendee name is imprinted on the template (no phone numbers or extraneous details).
+                  * Imprinted in elegant script font on certificate. No phone numbers or extraneous details.
                 </p>
               </div>
 
