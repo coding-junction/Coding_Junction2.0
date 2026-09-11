@@ -1,9 +1,13 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { sanity } from "@/lib/sanity";
 import { motion } from "motion/react";
-import { CalendarDays, MapPin, ArrowRight, Sparkles } from "lucide-react";
+import { CalendarDays, MapPin, ArrowRight, Sparkles, Ticket, Check, LogIn } from "lucide-react";
+import { useUser } from "@clerk/nextjs";
+import { registerForEvent, getRegisteredEventIds } from "@/lib/eventPass";
 
 interface EventType {
   _id: string;
@@ -19,11 +23,75 @@ interface EventType {
     };
   };
   registerLink?: string;
+  passcode?: string;
 }
 
 const Event = () => {
+  const router = useRouter();
+  const { user, isSignedIn, isLoaded } = useUser();
   const [events, setEvents] = useState<EventType[]>([]);
   const [loading, setLoading] = useState(true);
+  const [registeredIds, setRegisteredIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    setRegisteredIds(getRegisteredEventIds(user));
+
+    const handleSync = () => {
+      setRegisteredIds(getRegisteredEventIds(user));
+    };
+
+    window.addEventListener("cj:event-registered", handleSync);
+    window.addEventListener("storage", handleSync);
+    return () => {
+      window.removeEventListener("cj:event-registered", handleSync);
+      window.removeEventListener("storage", handleSync);
+    };
+  }, [user]);
+
+  // If a user clicked register while logged out, automatically claim the pass once signed in
+  useEffect(() => {
+    if (isSignedIn && user) {
+      try {
+        const pendingEventId = sessionStorage.getItem("cj_pending_event_register");
+        const pendingLink = sessionStorage.getItem("cj_pending_event_link");
+        if (pendingEventId) {
+          sessionStorage.removeItem("cj_pending_event_register");
+          sessionStorage.removeItem("cj_pending_event_link");
+          registerForEvent(pendingEventId, user).then(() => {
+            setRegisteredIds((prev) => Array.from(new Set([...prev, pendingEventId])));
+          });
+          if (pendingLink) {
+            window.open(pendingLink, "_blank", "noopener,noreferrer");
+          }
+        }
+      } catch {
+        // Ignore session storage errors
+      }
+    }
+  }, [isSignedIn, user]);
+
+  const handleRegisterClick = async (event: EventType) => {
+    // Strictly require authentication before registering
+    if (!isSignedIn || !user) {
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("cj_pending_event_register", event._id);
+        if (event.registerLink) {
+          sessionStorage.setItem("cj_pending_event_link", event.registerLink);
+        }
+      }
+      router.push(`/sign-in?redirect_url=${encodeURIComponent(window.location.href)}`);
+      return;
+    }
+
+    // 1. Immediately generate the digital Event Pass
+    await registerForEvent(event._id, user);
+    setRegisteredIds((prev) => Array.from(new Set([...prev, event._id])));
+
+    // 2. Open official registration form in a new tab
+    if (event.registerLink) {
+      window.open(event.registerLink, "_blank", "noopener,noreferrer");
+    }
+  };
 
   useEffect(() => {
     sanity
@@ -35,6 +103,7 @@ const Event = () => {
           location,
           description,
           tag,
+          passcode,
           images[]{ asset->{ _id, url } },
           image{ asset->{ url } },
           registerLink
@@ -180,24 +249,68 @@ const Event = () => {
                 </p>
 
                 {/* CTA */}
-                {event.registerLink ? (
-                  <a
-                    href={event.registerLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group/btn inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-semibold text-sm shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:from-indigo-500 hover:to-violet-500 transition-all duration-300"
-                  >
-                    Register Now
-                    <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
-                  </a>
-                ) : (
-                  <button
-                    disabled
-                    className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-gray-200 dark:bg-white/10 text-muted-foreground font-semibold text-sm cursor-not-allowed"
-                  >
-                    Registration Closed
-                  </button>
-                )}
+                {(() => {
+                  const isRegistered = registeredIds.includes(event._id);
+
+                  if (isRegistered) {
+                    return (
+                      <div className="flex flex-col sm:flex-row items-center gap-3">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25">
+                          <Check className="w-3.5 h-3.5" />
+                          Pass Generated
+                        </span>
+                        <Link
+                          href="/Dashboard"
+                          className="group/btn inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-semibold text-sm shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:from-indigo-500 hover:to-violet-500 transition-all duration-300"
+                        >
+                          <Ticket className="h-4 w-4" />
+                          <span>View Event Pass</span>
+                          <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
+                        </Link>
+                      </div>
+                    );
+                  }
+
+                  if (event.registerLink) {
+                    if (isLoaded && !isSignedIn) {
+                      return (
+                        <div className="flex flex-col items-center gap-2">
+                          <button
+                            onClick={() => handleRegisterClick(event)}
+                            className="group/btn inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-semibold text-sm shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:from-indigo-500 hover:to-violet-500 transition-all duration-300 cursor-pointer active:scale-[0.98]"
+                          >
+                            <LogIn className="h-4 w-4 text-indigo-200" />
+                            <span>Sign In / Sign up to Register</span>
+                            <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
+                          </button>
+                          <span className="text-[11px] text-muted-foreground font-mono">
+                            Free sign-in / sign-up required to register for event
+                          </span>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <button
+                        onClick={() => handleRegisterClick(event)}
+                        className="group/btn inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-semibold text-sm shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:from-indigo-500 hover:to-violet-500 transition-all duration-300 cursor-pointer active:scale-[0.98]"
+                      >
+                        <Ticket className="h-4 w-4 text-indigo-200" />
+                        <span>Register & Get Pass</span>
+                        <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
+                      </button>
+                    );
+                  }
+
+                  return (
+                    <button
+                      disabled
+                      className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-gray-200 dark:bg-white/10 text-muted-foreground font-semibold text-sm cursor-not-allowed"
+                    >
+                      Registration Closed
+                    </button>
+                  );
+                })()}
               </div>
             </div>
           </motion.div>

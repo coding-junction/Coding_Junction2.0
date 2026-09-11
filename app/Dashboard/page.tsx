@@ -21,6 +21,7 @@ import { EventPassesTab } from "@/components/dashboard/EventPassesTab";
 import { LeaderboardTab } from "@/components/dashboard/LeaderboardTab";
 import { ResourcesTab } from "@/components/dashboard/ResourcesTab";
 import { NotificationCenter } from "@/components/dashboard/NotificationCenter";
+import { registerForEvent, getRegisteredEventIds } from "@/lib/eventPass";
 
 /* ─── Types ─── */
 interface SanityEvent {
@@ -30,6 +31,7 @@ interface SanityEvent {
   location?: string;
   description?: string;
   registerLink?: string;
+  passcode?: string;
   images?: { asset?: { _id?: string; url: string } }[];
   image?: { asset?: { url: string } };
   certificateTemplate?: { asset?: { url: string } };
@@ -192,7 +194,7 @@ const DashboardMain = () => {
     sanity
       .fetch(
         `*[_type in ["event", "post"]] | order(date desc) {
-          _id, title, date, location, description, registerLink,
+          _id, title, date, location, description, registerLink, passcode,
           images[]{ asset->{ _id, url } },
           image{ asset->{ url } },
           certificateTemplate{ asset->{ url } }
@@ -226,6 +228,23 @@ const DashboardMain = () => {
   const pastEvents = React.useMemo(() => {
     return events.filter((e) => !e.date || new Date(e.date) < new Date());
   }, [events]);
+
+  const [registeredEventIds, setRegisteredEventIds] = React.useState<string[]>([]);
+
+  React.useEffect(() => {
+    setRegisteredEventIds(getRegisteredEventIds(user));
+
+    const handleSync = () => {
+      setRegisteredEventIds(getRegisteredEventIds(user));
+    };
+
+    window.addEventListener("cj:event-registered", handleSync);
+    window.addEventListener("storage", handleSync);
+    return () => {
+      window.removeEventListener("cj:event-registered", handleSync);
+      window.removeEventListener("storage", handleSync);
+    };
+  }, [user, user?.unsafeMetadata?.registeredEventIds]);
 
   return (
     <div className="flex flex-col md:flex-row h-screen w-screen bg-background overflow-hidden">
@@ -329,15 +348,19 @@ const DashboardMain = () => {
                 eventsLoading={eventsLoading}
                 totalEvents={events.length}
                 verificationData={verificationData}
+                registeredEventIds={registeredEventIds}
+                onGoToPasses={() => setActiveTab("passes")}
                 onOpenVerification={() => setIsVerificationModalOpen(true)}
               />
             )}
             {activeTab === "events" && (
               <EventsTab
                 key="events"
+                user={user}
                 upcomingEvents={upcomingEvents}
                 pastEvents={pastEvents}
                 eventsLoading={eventsLoading}
+                registeredEventIds={registeredEventIds}
                 onGoToPasses={() => setActiveTab("passes")}
               />
             )}
@@ -405,13 +428,15 @@ const DashboardMain = () => {
 const OverviewTab = React.memo(function OverviewTab({
   user, isLoaded, getGreeting, memberSince,
   upcomingEvents, pastEvents, eventsLoading, totalEvents,
-  verificationData, onOpenVerification,
+  verificationData, registeredEventIds = [], onGoToPasses, onOpenVerification,
 }: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   user: any; isLoaded: boolean; getGreeting: () => string; memberSince: string;
   upcomingEvents: SanityEvent[]; pastEvents: SanityEvent[]; eventsLoading: boolean;
   totalEvents: number;
   verificationData?: VerifiedCollegeData | null;
+  registeredEventIds?: string[];
+  onGoToPasses?: () => void;
   onOpenVerification?: () => void;
 }) {
   const quickStats = [
@@ -583,11 +608,35 @@ const OverviewTab = React.memo(function OverviewTab({
                           )}
                         </div>
                       </div>
-                      {event.registerLink && (
-                        <a href={event.registerLink} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 rounded-lg bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold hover:bg-indigo-500/20 dark:hover:bg-indigo-500/30 transition-colors flex-shrink-0">
-                          Register
-                        </a>
-                      )}
+                      {(() => {
+                        const isRegistered = registeredEventIds.includes(event._id);
+                        if (isRegistered) {
+                          return (
+                            <button
+                              onClick={onGoToPasses}
+                              className="px-2.5 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-mono font-semibold flex items-center gap-1 border border-emerald-500/25 hover:bg-emerald-500/20 transition-colors flex-shrink-0 cursor-pointer"
+                            >
+                              <Ticket className="w-3 h-3" />
+                              <span>View Pass</span>
+                            </button>
+                          );
+                        }
+                        if (event.registerLink) {
+                          return (
+                            <button
+                              onClick={async () => {
+                                await registerForEvent(event._id, user);
+                                window.open(event.registerLink, "_blank", "noopener,noreferrer");
+                              }}
+                              className="px-3 py-1.5 rounded-lg bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold hover:bg-indigo-500/20 dark:hover:bg-indigo-500/30 transition-colors flex-shrink-0 cursor-pointer flex items-center gap-1"
+                            >
+                              <Ticket className="w-3 h-3" />
+                              <span>Register</span>
+                            </button>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
                   );
                 })}
@@ -717,9 +766,12 @@ const OverviewTab = React.memo(function OverviewTab({
    TAB: Events
    ═══════════════════════════════════════════════ */
 const EventsTab = React.memo(function EventsTab({
-  upcomingEvents, pastEvents, eventsLoading, onGoToPasses,
+  user, upcomingEvents, pastEvents, eventsLoading, registeredEventIds = [], onGoToPasses,
 }: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  user?: any;
   upcomingEvents: SanityEvent[]; pastEvents: SanityEvent[]; eventsLoading: boolean;
+  registeredEventIds?: string[];
   onGoToPasses?: () => void;
 }) {
   const [filter, setFilter] = useState<"all" | "upcoming" | "past">("all");
@@ -847,11 +899,38 @@ const EventsTab = React.memo(function EventsTab({
                   {event.description && (
                     <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{event.description}</p>
                   )}
-                  {event.registerLink && isUpcoming && (
-                    <a href={event.registerLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-500 hover:text-indigo-600 mt-2 transition-colors">
-                      Register <ExternalLink className="h-3 w-3" />
-                    </a>
-                  )}
+                  {(() => {
+                    const isRegistered = registeredEventIds.includes(event._id);
+                    if (isRegistered) {
+                      return (
+                        <button
+                          onClick={onGoToPasses}
+                          className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-emerald-600 dark:text-emerald-400 mt-2 hover:underline cursor-pointer"
+                        >
+                          <Ticket className="h-3 w-3" />
+                          <span>Pass Generated · View Pass →</span>
+                        </button>
+                      );
+                    }
+
+                    if (event.registerLink && isUpcoming) {
+                      return (
+                        <button
+                          onClick={async () => {
+                            await registerForEvent(event._id, user);
+                            window.open(event.registerLink, "_blank", "noopener,noreferrer");
+                          }}
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-500 hover:text-indigo-600 mt-2 transition-colors cursor-pointer"
+                        >
+                          <Ticket className="h-3 w-3" />
+                          <span>Register & Get Pass</span>
+                          <ExternalLink className="h-3 w-3" />
+                        </button>
+                      );
+                    }
+
+                    return null;
+                  })()}
                 </div>
               </div>
             );
