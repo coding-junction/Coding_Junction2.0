@@ -28,7 +28,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 
-import { registerForEvent, getRegisteredEventIds } from "@/lib/eventPass";
+import { registerForEvent, getRegisteredEventIds, downloadEventPassPng } from "@/lib/eventPass";
 
 interface SanityEvent {
   _id: string;
@@ -274,6 +274,20 @@ export const EventPassesTab: React.FC<EventPassesTabProps> = ({
     return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${details}&location=${location}${dates}`;
   };
 
+  // Download Event Pass Ticket (PNG)
+  const handleDownloadPass = (event: SanityEvent, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    const ticketId = `CJ-EVT-${event._id.slice(-4).toUpperCase()}-${userId.replace("user_", "").slice(-4).toUpperCase()}`;
+    downloadEventPassPng({
+      eventTitle: event.title,
+      attendeeName: userName,
+      date: event.date,
+      location: event.location,
+      ticketId,
+      isVerified: attendedEventIds.includes(event._id),
+    });
+  };
+
   // Download iCal (.ics) file
   const handleDownloadICal = (event: SanityEvent, e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -457,6 +471,7 @@ export const EventPassesTab: React.FC<EventPassesTabProps> = ({
                   isRegistered={true}
                   onToggleRSVP={(e) => handleToggleRSVP(event._id, e)}
                   onViewPass={() => setSelectedTicketEvent(event)}
+                  onDownloadPass={() => handleDownloadPass(event)}
                   onGoogleCalendar={() => window.open(getGoogleCalendarUrl(event), "_blank")}
                   onDownloadICal={(e) => handleDownloadICal(event, e)}
                 />
@@ -481,6 +496,7 @@ export const EventPassesTab: React.FC<EventPassesTabProps> = ({
                   isRegistered={isRegistered}
                   onToggleRSVP={(e) => handleToggleRSVP(event._id, e)}
                   onViewPass={() => setSelectedTicketEvent(event)}
+                  onDownloadPass={() => handleDownloadPass(event)}
                   onGoogleCalendar={() => window.open(getGoogleCalendarUrl(event), "_blank")}
                   onDownloadICal={(e) => handleDownloadICal(event, e)}
                 />
@@ -566,6 +582,7 @@ export const EventPassesTab: React.FC<EventPassesTabProps> = ({
             isAttended={attendedEventIds.includes(selectedTicketEvent._id)}
             onVerifyPasscode={(code) => handleVerifyPasscode(selectedTicketEvent, code)}
             onClose={() => setSelectedTicketEvent(null)}
+            onDownloadPass={() => handleDownloadPass(selectedTicketEvent)}
             onGoogleCalendar={() => window.open(getGoogleCalendarUrl(selectedTicketEvent), "_blank")}
             onDownloadICal={(e) => handleDownloadICal(selectedTicketEvent, e)}
             onNavigateToCertificates={onNavigateToCertificates}
@@ -586,6 +603,7 @@ function TicketCard({
   isRegistered,
   onToggleRSVP: _onToggleRSVP,
   onViewPass,
+  onDownloadPass,
   onGoogleCalendar,
   onDownloadICal: _onDownloadICal,
 }: {
@@ -595,6 +613,7 @@ function TicketCard({
   isRegistered: boolean;
   onToggleRSVP: (e: React.MouseEvent) => void;
   onViewPass: () => void;
+  onDownloadPass: () => void;
   onGoogleCalendar: () => void;
   onDownloadICal: (e: React.MouseEvent) => void;
 }) {
@@ -664,7 +683,12 @@ function TicketCard({
       {/* Action Row */}
       <div className="flex items-center justify-between pt-3 border-t border-black/[0.04] dark:border-white/[0.04]">
         <div className="flex items-center gap-1.5">
-          {event.registerLink ? (
+          {isRegistered ? (
+            <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+              <Check className="w-3 h-3" />
+              <span>Registered</span>
+            </span>
+          ) : event.registerLink ? (
             <a
               href={event.registerLink}
               target="_blank"
@@ -678,6 +702,20 @@ function TicketCard({
             <span className="text-[11px] font-mono text-muted-foreground px-2 py-1 rounded bg-black/[0.03] dark:bg-white/[0.04]">
               Details Announced
             </span>
+          )}
+
+          {/* Pass Download Icon (shown when pass is generated) */}
+          {isRegistered && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDownloadPass();
+              }}
+              title="Download Event Pass (PNG)"
+              className="p-1.5 rounded-lg text-indigo-500 hover:text-indigo-600 hover:bg-indigo-500/10 dark:text-indigo-400 dark:hover:bg-indigo-500/20 transition-colors cursor-pointer"
+            >
+              <Download className="w-4 h-4" />
+            </button>
           )}
 
           {/* Sync Calendar */}
@@ -723,6 +761,7 @@ function EventTicketModal({
   isAttended = false,
   onVerifyPasscode,
   onClose,
+  onDownloadPass,
   onGoogleCalendar,
   onDownloadICal,
   onNavigateToCertificates,
@@ -733,6 +772,7 @@ function EventTicketModal({
   isAttended?: boolean;
   onVerifyPasscode: (code: string) => Promise<{ success: boolean; message: string }>;
   onClose: () => void;
+  onDownloadPass: () => void;
   onGoogleCalendar: () => void;
   onDownloadICal: (e: React.MouseEvent) => void;
   onNavigateToCertificates?: () => void;
@@ -991,6 +1031,15 @@ function EventTicketModal({
 
         {/* Footer Actions */}
         <div className="p-4 bg-white/[0.02] border-t border-white/[0.08] flex items-center justify-between gap-2 flex-shrink-0">
+          <button
+            onClick={onDownloadPass}
+            className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-mono font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition-all shadow-md shadow-indigo-500/20 active:scale-[0.98]"
+            title="Download Event Pass (PNG)"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Download Pass</span>
+          </button>
+
           <button
             onClick={onGoogleCalendar}
             className="flex-1 py-2 px-3 rounded-xl bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 text-indigo-400 text-xs font-mono font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
