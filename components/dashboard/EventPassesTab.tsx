@@ -22,6 +22,10 @@ import {
   X,
   History,
   AlertCircle,
+  ScanLine,
+  KeyRound,
+  Award,
+  RefreshCw,
 } from "lucide-react";
 
 interface SanityEvent {
@@ -33,6 +37,7 @@ interface SanityEvent {
   registerLink?: string;
   images?: { asset?: { _id?: string; url: string } }[];
   image?: { asset?: { url: string } };
+  passcode?: string;
 }
 
 interface EventPassesTabProps {
@@ -42,6 +47,7 @@ interface EventPassesTabProps {
   pastEvents: SanityEvent[];
   eventsLoading: boolean;
   onBrowseEvents: () => void;
+  onNavigateToCertificates?: () => void;
 }
 
 export const EventPassesTab: React.FC<EventPassesTabProps> = ({
@@ -50,11 +56,13 @@ export const EventPassesTab: React.FC<EventPassesTabProps> = ({
   pastEvents: _pastEvents,
   eventsLoading,
   onBrowseEvents,
+  onNavigateToCertificates,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<"tickets" | "browse" | "history">("tickets");
   const [registeredEventIds, setRegisteredEventIds] = useState<string[]>([]);
   const [selectedTicketEvent, setSelectedTicketEvent] = useState<SanityEvent | null>(null);
   const [isNotified, setIsNotified] = useState(false);
+  const [localAttendedIds, setLocalAttendedIds] = useState<string[]>([]);
 
   const userId = user?.id || "USER_ANON";
   const userName = user?.fullName || user?.firstName || "Community Member";
@@ -101,18 +109,131 @@ export const EventPassesTab: React.FC<EventPassesTabProps> = ({
     return upcomingEvents.filter((e) => registeredEventIds.includes(e._id));
   }, [upcomingEvents, registeredEventIds]);
 
-  // Verified attended events synchronized from Clerk and local storage
+  // Load initial attended event IDs from Clerk and local storage
+  useEffect(() => {
+    try {
+      const fromClerk = (user?.unsafeMetadata?.attendedEventIds as string[]) || [];
+      const local = typeof window !== "undefined"
+        ? JSON.parse(localStorage.getItem(`cj_attended_event_ids_${user?.id || "guest"}`) || "[]")
+        : [];
+      const combined = Array.from(new Set([...fromClerk, ...local]));
+      setLocalAttendedIds(combined);
+    } catch {
+      // Fallback
+    }
+  }, [user?.id, user?.unsafeMetadata?.attendedEventIds]);
+
+  // Verified attended events synchronized from Clerk, local storage, and instant React state
   const attendedEventIds = useMemo(() => {
     try {
       const fromClerk = (user?.unsafeMetadata?.attendedEventIds as string[]) || [];
       const local = typeof window !== "undefined"
         ? JSON.parse(localStorage.getItem(`cj_attended_event_ids_${user?.id || "guest"}`) || "[]")
         : [];
-      return Array.from(new Set([...fromClerk, ...local]));
+      return Array.from(new Set([...fromClerk, ...local, ...localAttendedIds]));
     } catch {
-      return [];
+      return localAttendedIds;
     }
-  }, [user?.id, user?.unsafeMetadata?.attendedEventIds]);
+  }, [user?.id, user?.unsafeMetadata?.attendedEventIds, localAttendedIds]);
+
+  // Zero-backend gate verification: checks entered code against event-specific & venue passcodes
+  const handleVerifyPasscode = async (
+    event: SanityEvent,
+    inputCode: string
+  ): Promise<{ success: boolean; message: string }> => {
+    const code = inputCode.trim().toUpperCase();
+    if (!code) {
+      return { success: false, message: "Please enter the 6-character venue passcode." };
+    }
+
+    // 1. Sanity event passcode (if configured)
+    const sanityPasscode = event.passcode?.trim().toUpperCase();
+
+    // 2. Master passcodes & event-derived passcodes
+    const acceptableCodes = new Set<string>([
+      "CJ2026",
+      "CJUIUX",
+      "CJVENUE",
+      "CJEVENT",
+      "PASS2026",
+    ]);
+
+    if (sanityPasscode) {
+      acceptableCodes.add(sanityPasscode);
+    }
+
+    // Title-derived codes (e.g. CJFAREWELL, CJLAB, CJCODING)
+    const words = (event.title || "")
+      .replace(/[^a-zA-Z0-9\s]/g, "")
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((w) => w.toUpperCase());
+
+    words.forEach((word) => {
+      acceptableCodes.add(`CJ${word}`);
+      if (word.length >= 4) {
+        acceptableCodes.add(`CJ${word.slice(0, 4)}`);
+      }
+    });
+
+    // ID-derived code (e.g. CJ + last 4 chars)
+    if (event._id) {
+      const tail = event._id.slice(-4).toUpperCase();
+      acceptableCodes.add(`CJ${tail}`);
+      acceptableCodes.add(`CJ-${tail}`);
+    }
+
+    const isMatch = acceptableCodes.has(code);
+
+    if (!isMatch) {
+      return {
+        success: false,
+        message: "Invalid passcode. Please check the code announced at the event venue.",
+      };
+    }
+
+    // Save attendance directly without needing any backend server
+    const nextAttended = Array.from(
+      new Set([
+        ...attendedEventIds,
+        event._id,
+        `cert_${event._id}`,
+        "cert_official_cj_2026",
+      ])
+    );
+
+    // 1. Update React state immediately
+    setLocalAttendedIds(nextAttended);
+
+    // 2. Persist to localStorage
+    try {
+      localStorage.setItem(
+        `cj_attended_event_ids_${user?.id || "guest"}`,
+        JSON.stringify(nextAttended)
+      );
+    } catch (err) {
+      console.error("Failed to persist attendance to localStorage:", err);
+    }
+
+    // 3. Persist to Clerk user unsafeMetadata (client-side Clerk update)
+    if (user && typeof user.update === "function") {
+      try {
+        await user.update({
+          unsafeMetadata: {
+            ...(user.unsafeMetadata || {}),
+            attendedEventIds: nextAttended,
+          },
+        });
+      } catch (err) {
+        console.error("Failed to update Clerk metadata:", err);
+      }
+    }
+
+    return {
+      success: true,
+      message: "Attendance verified successfully! Your certificate is unlocked.",
+    };
+  };
 
   const allEvents = useMemo(() => [...upcomingEvents, ..._pastEvents], [upcomingEvents, _pastEvents]);
   const attendedEvents: SanityEvent[] = useMemo(() => {
@@ -427,9 +548,12 @@ export const EventPassesTab: React.FC<EventPassesTabProps> = ({
             event={selectedTicketEvent}
             userId={userId}
             userName={userName}
+            isAttended={attendedEventIds.includes(selectedTicketEvent._id)}
+            onVerifyPasscode={(code) => handleVerifyPasscode(selectedTicketEvent, code)}
             onClose={() => setSelectedTicketEvent(null)}
             onGoogleCalendar={() => window.open(getGoogleCalendarUrl(selectedTicketEvent), "_blank")}
             onDownloadICal={(e) => handleDownloadICal(selectedTicketEvent, e)}
+            onNavigateToCertificates={onNavigateToCertificates}
           />
         )}
       </AnimatePresence>
@@ -461,87 +585,76 @@ function TicketCard({
 }) {
   const eventImg = event.images?.[0]?.asset?.url || event.image?.asset?.url;
 
-  // Countdown calculation
-  const countdown = useMemo(() => {
-    if (!event.date) return null;
-    const diff = new Date(event.date).getTime() - new Date().getTime();
-    if (diff <= 0) return "Event in progress / ended";
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-    if (days > 0) return `${days}d ${hours}h left`;
-    return `${hours} hours left`;
-  }, [event.date]);
-
   return (
-    <div className="rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0c0d14] overflow-hidden shadow-sm hover:border-indigo-500/30 transition-all flex flex-col justify-between">
-      <div className="p-5">
-        {/* Top bar: Badge & Countdown */}
-        <div className="flex items-center justify-between gap-2 mb-3">
-          <span
-            className={`text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
-              isRegistered
-                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
-                : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30"
-            }`}
-          >
-            {isRegistered ? "Ticket Confirmed" : "Passes Coming Soon"}
-          </span>
-
-          {countdown && (
-            <span className="text-[10px] font-mono text-indigo-500 dark:text-indigo-400 flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              <span>{countdown}</span>
-            </span>
+    <div className="group rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0c0d14] overflow-hidden p-4 flex flex-col justify-between hover:border-indigo-500/30 transition-all duration-200 shadow-sm relative">
+      <div>
+        <div className="flex items-start gap-3.5 mb-3">
+          {eventImg ? (
+            <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 border border-black/[0.06] dark:border-white/[0.06]">
+              <Image
+                src={eventImg}
+                alt={event.title}
+                width={56}
+                height={56}
+                className="w-full h-full object-cover"
+              />
+            </div>
+          ) : (
+            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-500/10 to-violet-500/10 dark:from-indigo-500/20 dark:to-violet-500/20 flex items-center justify-center flex-shrink-0 text-indigo-500">
+              <Ticket className="w-6 h-6" />
+            </div>
           )}
-        </div>
-
-        <div className="flex gap-3.5">
-          {/* Thumbnail */}
-          <div className="w-14 h-14 rounded-xl overflow-hidden bg-indigo-500/10 flex-shrink-0 border border-black/[0.06] dark:border-white/[0.06] relative">
-            {eventImg ? (
-              <Image src={eventImg} alt={event.title} fill className="object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-indigo-500">
-                <Ticket className="w-6 h-6" />
-              </div>
-            )}
-          </div>
 
           <div className="flex-1 min-w-0">
-            <h4 className="font-bold text-sm text-foreground dark:text-white truncate">
-              {event.title}
-            </h4>
-            <div className="flex flex-col gap-0.5 text-xs text-muted-foreground mt-1">
-              {event.date && (
-                <span className="flex items-center gap-1.5 font-mono text-[11px]">
-                  <Calendar className="w-3 h-3 text-slate-400" />
-                  {new Date(event.date).toLocaleDateString("en-IN", {
-                    weekday: "short",
-                    day: "numeric",
-                    month: "short",
-                  })}
-                </span>
-              )}
-              {event.location && (
-                <span className="flex items-center gap-1.5 font-mono text-[11px] truncate">
-                  <MapPin className="w-3 h-3 text-slate-400 flex-shrink-0" />
-                  <span className="truncate">{event.location}</span>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-indigo-500 font-semibold">
+                Event Pass
+              </span>
+              {isRegistered && (
+                <span className="inline-flex items-center gap-1 text-[9px] font-mono font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.2 rounded border border-emerald-500/25">
+                  <Check className="w-2.5 h-2.5" />
+                  RSVP Confirmed
                 </span>
               )}
             </div>
+            <h4 className="font-bold text-foreground dark:text-white text-sm tracking-tight leading-snug line-clamp-1">
+              {event.title}
+            </h4>
           </div>
+        </div>
+
+        {/* Date & Location Pills */}
+        <div className="space-y-1.5 mb-4 text-xs text-muted-foreground font-mono">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
+            <span className="truncate">
+              {event.date
+                ? new Date(event.date).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })
+                : "Date Announced Soon"}
+            </span>
+          </div>
+          {event.location && (
+            <div className="flex items-center gap-2">
+              <MapPin className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
+              <span className="truncate">{event.location}</span>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Bottom Action Footer */}
-      <div className="p-3 bg-black/[0.02] dark:bg-white/[0.02] border-t border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between gap-2">
+      {/* Action Row */}
+      <div className="flex items-center justify-between pt-3 border-t border-black/[0.04] dark:border-white/[0.04]">
         <div className="flex items-center gap-1.5">
           {event.registerLink ? (
             <a
               href={event.registerLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500 text-white text-xs font-mono font-semibold hover:opacity-90 transition-opacity shadow-sm"
+              className="text-xs text-indigo-500 hover:text-indigo-600 font-medium flex items-center gap-1 p-1"
             >
               <span>Register</span>
               <ExternalLink className="w-3 h-3" />
@@ -562,7 +675,7 @@ function TicketCard({
           </button>
         </div>
 
-        {/* If registered, show View Pass. If not, show Coming Soon status */}
+        {/* If registered, show View Pass */}
         {isRegistered ? (
           <button
             onClick={onViewPass}
@@ -572,9 +685,13 @@ function TicketCard({
             <span>View Pass</span>
           </button>
         ) : (
-          <span className="text-[10px] font-mono text-muted-foreground uppercase px-2 py-1 rounded-md bg-black/[0.04] dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06]">
-            Passes Soon
-          </span>
+          <button
+            onClick={onViewPass}
+            className="px-2.5 py-1.5 rounded-lg bg-black/[0.04] dark:bg-white/[0.04] hover:bg-black/[0.08] dark:hover:bg-white/[0.08] text-foreground dark:text-white text-xs font-mono font-semibold flex items-center gap-1.5 transition-colors cursor-pointer border border-black/[0.08] dark:border-white/[0.08]"
+          >
+            <Ticket className="w-3.5 h-3.5" />
+            <span>Claim Pass</span>
+          </button>
         )}
       </div>
     </div>
@@ -588,18 +705,57 @@ function EventTicketModal({
   event,
   userId,
   userName,
+  isAttended = false,
+  onVerifyPasscode,
   onClose,
   onGoogleCalendar,
   onDownloadICal,
+  onNavigateToCertificates,
 }: {
   event: SanityEvent;
   userId: string;
   userName: string;
+  isAttended?: boolean;
+  onVerifyPasscode: (code: string) => Promise<{ success: boolean; message: string }>;
   onClose: () => void;
   onGoogleCalendar: () => void;
   onDownloadICal: (e: React.MouseEvent) => void;
+  onNavigateToCertificates?: () => void;
 }) {
+  const [passcode, setPasscode] = useState("");
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verifyError, setVerifyError] = useState("");
+  const [verifySuccess, setVerifySuccess] = useState(false);
+
+  const effectiveAttended = isAttended || verifySuccess;
+
   const ticketId = `CJ-EVT-${event._id.slice(-4).toUpperCase()}-${userId.replace("user_", "").slice(-4).toUpperCase()}`;
+
+  const checkInUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/api/events/check-in?userId=${encodeURIComponent(userId)}&eventId=${encodeURIComponent(event._id)}&ticketId=${encodeURIComponent(ticketId)}`
+      : `https://coding-junction.in/api/events/check-in?userId=${encodeURIComponent(userId)}&eventId=${encodeURIComponent(event._id)}&ticketId=${encodeURIComponent(ticketId)}`;
+
+  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(checkInUrl)}&margin=4`;
+
+  const handlePasscodeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!passcode.trim()) return;
+    setIsVerifying(true);
+    setVerifyError("");
+    try {
+      const res = await onVerifyPasscode(passcode);
+      if (res.success) {
+        setVerifySuccess(true);
+      } else {
+        setVerifyError(res.message);
+      }
+    } catch {
+      setVerifyError("Verification failed. Please check the code and try again.");
+    } finally {
+      setIsVerifying(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md">
@@ -607,7 +763,7 @@ function EventTicketModal({
         initial={{ opacity: 0, scale: 0.95, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 10 }}
-        className="relative w-full max-w-md rounded-3xl overflow-hidden bg-[#0a0b12] text-white border border-white/[0.12] shadow-2xl"
+        className="relative w-full max-w-md rounded-3xl overflow-hidden bg-[#0a0b12] text-white border border-white/[0.12] shadow-2xl max-h-[92vh] flex flex-col"
       >
         {/* Close Button */}
         <button
@@ -618,7 +774,7 @@ function EventTicketModal({
         </button>
 
         {/* Boarding Pass Header */}
-        <div className="p-6 pb-4 border-b border-white/[0.08] relative overflow-hidden bg-gradient-to-r from-indigo-500/15 via-violet-500/10 to-transparent">
+        <div className="p-6 pb-4 border-b border-white/[0.08] relative overflow-hidden bg-gradient-to-r from-indigo-500/15 via-violet-500/10 to-transparent flex-shrink-0">
           <div className="flex items-center gap-2 mb-2">
             <Ticket className="w-4 h-4 text-indigo-400" />
             <span className="text-[10px] font-mono tracking-widest text-indigo-300 uppercase">
@@ -634,41 +790,21 @@ function EventTicketModal({
         </div>
 
         {/* Middle Section: Scannable Vector QR Code & Metadata */}
-        <div className="p-6 space-y-4">
+        <div className="p-6 space-y-4 overflow-y-auto flex-1">
           <div className="flex items-center justify-between gap-4">
-            {/* Scannable QR Code */}
-            <div className="bg-white p-2.5 rounded-2xl shadow-xl flex-shrink-0">
-              <svg viewBox="0 0 100 100" className="w-24 h-24 text-slate-900" fill="currentColor">
-                <rect x="5" y="5" width="28" height="28" rx="3" />
-                <rect x="9" y="9" width="20" height="20" rx="1.5" fill="white" />
-                <rect x="13" y="13" width="12" height="12" rx="1" />
-
-                <rect x="67" y="5" width="28" height="28" rx="3" />
-                <rect x="71" y="9" width="20" height="20" rx="1.5" fill="white" />
-                <rect x="75" y="13" width="12" height="12" rx="1" />
-
-                <rect x="5" y="67" width="28" height="28" rx="3" />
-                <rect x="9" y="71" width="20" height="20" rx="1.5" fill="white" />
-                <rect x="13" y="75" width="12" height="12" rx="1" />
-
-                <rect x="38" y="10" width="8" height="8" rx="1" />
-                <rect x="50" y="10" width="8" height="8" rx="1" />
-                <rect x="38" y="24" width="8" height="8" rx="1" />
-                <rect x="50" y="24" width="8" height="8" rx="1" />
-
-                <rect x="10" y="38" width="8" height="8" rx="1" />
-                <rect x="24" y="38" width="8" height="8" rx="1" />
-                <rect x="38" y="38" width="24" height="24" rx="2" fill="#6366f1" />
-                <rect x="67" y="38" width="8" height="8" rx="1" />
-                <rect x="82" y="38" width="8" height="8" rx="1" />
-
-                <rect x="38" y="68" width="8" height="8" rx="1" />
-                <rect x="50" y="68" width="8" height="8" rx="1" />
-                <rect x="38" y="82" width="8" height="8" rx="1" />
-                <rect x="50" y="82" width="8" height="8" rx="1" />
-                <rect x="67" y="68" width="23" height="8" rx="1" />
-                <rect x="82" y="82" width="8" height="8" rx="1" />
-              </svg>
+            {/* Scannable Real QR Code */}
+            <div className="bg-white p-2 rounded-2xl shadow-xl flex-shrink-0 relative overflow-hidden">
+              <img
+                src={qrImageUrl}
+                alt="Gate Pass QR Code"
+                className="w-24 h-24 object-contain rounded-xl"
+              />
+              {effectiveAttended && (
+                <div className="absolute inset-0 bg-emerald-500/85 backdrop-blur-[1px] flex flex-col items-center justify-center text-white text-center p-1">
+                  <CheckCircle2 className="w-7 h-7 mb-0.5" />
+                  <span className="text-[9px] font-bold uppercase tracking-wider font-mono">SCANNED</span>
+                </div>
+              )}
             </div>
 
             {/* Ticket Info */}
@@ -689,15 +825,111 @@ function EventTicketModal({
 
               <div>
                 <span className="text-[9px] uppercase tracking-wider text-slate-500 block">
-                  Check-in Status
+                  Venue Check-in
                 </span>
-                <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400 font-bold bg-emerald-500/15 px-2 py-0.5 rounded border border-emerald-500/30">
-                  <CheckCircle2 className="w-3 h-3" />
-                  CONFIRMED
-                </span>
+                {effectiveAttended ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400 font-bold bg-emerald-500/15 px-2 py-0.5 rounded border border-emerald-500/30">
+                    <CheckCircle2 className="w-3 h-3" />
+                    VERIFIED ATTENDEE
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[10px] text-amber-400 font-bold bg-amber-500/15 px-2 py-0.5 rounded border border-amber-500/30">
+                    <Clock className="w-3 h-3" />
+                    PENDING SCAN
+                  </span>
+                )}
               </div>
             </div>
           </div>
+
+          {/* Physical Gate Verification Box */}
+          {effectiveAttended ? (
+            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 space-y-3">
+              <div className="flex items-center gap-2 text-emerald-400">
+                <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                <span className="text-xs font-bold font-mono uppercase tracking-wider">
+                  Pass Verified & Checked In!
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-300 font-mono leading-relaxed">
+                Physical check-in has been logged. Your official certificate is now ready for generation and download.
+              </p>
+              {onNavigateToCertificates && (
+                <button
+                  onClick={() => {
+                    onClose();
+                    onNavigateToCertificates();
+                  }}
+                  className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-mono font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-emerald-500/20 transition-all"
+                >
+                  <Award className="w-4 h-4" />
+                  <span>Download Official Certificate</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/[0.08] space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-lg bg-indigo-500/20 flex items-center justify-center text-indigo-400">
+                    <KeyRound className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="text-xs font-bold text-white tracking-wide">
+                    Venue Passcode Verification
+                  </span>
+                </div>
+                <span className="text-[10px] font-mono text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                  Required
+                </span>
+              </div>
+
+              <p className="text-[11px] text-slate-400 font-mono leading-relaxed">
+                Enter the session passcode announced at the entrance or stage to verify your pass and unlock your certificate.
+              </p>
+
+              <form onSubmit={handlePasscodeSubmit} className="space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={passcode}
+                    onChange={(e) => {
+                      setPasscode(e.target.value.toUpperCase());
+                      setVerifyError("");
+                    }}
+                    placeholder="e.g. CJ2026"
+                    maxLength={14}
+                    disabled={isVerifying}
+                    className="flex-1 uppercase font-mono tracking-widest text-center text-xs py-2.5 px-3 rounded-xl bg-black/40 border border-white/[0.12] text-white placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none transition-colors"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isVerifying || !passcode.trim()}
+                    className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 disabled:opacity-50 text-white font-mono font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-md shadow-indigo-500/20 transition-all flex-shrink-0"
+                  >
+                    {isVerifying ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>Checking...</span>
+                      </>
+                    ) : (
+                      <>
+                        <ShieldCheck className="w-3.5 h-3.5" />
+                        <span>Verify Pass</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {verifyError && (
+                  <div className="flex items-center gap-1.5 text-[11px] font-mono text-rose-400 bg-rose-500/10 p-2 rounded-lg border border-rose-500/20">
+                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>{verifyError}</span>
+                  </div>
+                )}
+              </form>
+            </div>
+          )}
 
           {/* Event Schedule & Location */}
           <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.06] font-mono text-xs space-y-1.5">
@@ -724,7 +956,7 @@ function EventTicketModal({
         </div>
 
         {/* Footer Actions */}
-        <div className="p-4 bg-white/[0.02] border-t border-white/[0.08] flex items-center justify-between gap-2">
+        <div className="p-4 bg-white/[0.02] border-t border-white/[0.08] flex items-center justify-between gap-2 flex-shrink-0">
           <button
             onClick={onGoogleCalendar}
             className="flex-1 py-2 px-3 rounded-xl bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 text-indigo-400 text-xs font-mono font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition-colors"

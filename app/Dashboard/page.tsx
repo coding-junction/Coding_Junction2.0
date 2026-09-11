@@ -47,6 +47,7 @@ const navTabs: {
 }[] = [
   { key: "overview", label: "Overview", icon: LayoutDashboard },
   { key: "events", label: "Events", icon: CalendarDays },
+  { key: "passes", label: "Event Passes", icon: Ticket },
   { key: "leaderboard", label: "Leaderboard", icon: Trophy, badge: "Soon" },
   { key: "certificates", label: "Certificates", icon: Award, badge: "Soon" },
   { key: "profile", label: "Profile", icon: UserCog },
@@ -337,6 +338,18 @@ const DashboardMain = () => {
                 upcomingEvents={upcomingEvents}
                 pastEvents={pastEvents}
                 eventsLoading={eventsLoading}
+                onGoToPasses={() => setActiveTab("passes")}
+              />
+            )}
+            {activeTab === "passes" && (
+              <EventPassesTab
+                key="passes"
+                user={user}
+                upcomingEvents={upcomingEvents}
+                pastEvents={pastEvents}
+                eventsLoading={eventsLoading}
+                onBrowseEvents={() => setActiveTab("events")}
+                onNavigateToCertificates={() => setActiveTab("certificates")}
               />
             )}
             {activeTab === "leaderboard" && (
@@ -354,6 +367,7 @@ const DashboardMain = () => {
                 verificationData={verificationData}
                 events={events}
                 onBrowseEvents={() => setActiveTab("events")}
+                onNavigateToPasses={() => setActiveTab("passes")}
               />
             )}
             {activeTab === "profile" && (
@@ -713,8 +727,11 @@ const EventsTab = React.memo(function EventsTab({
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
-      {/* Digital Entry Passes Coming Soon Banner */}
-      <div className="w-full mb-6 p-3.5 rounded-2xl bg-gradient-to-r from-indigo-500/10 via-violet-500/10 to-transparent border border-indigo-500/20 flex items-center justify-between gap-3 text-left shadow-sm">
+      {/* Digital Entry Passes Live Banner */}
+      <div
+        onClick={onGoToPasses}
+        className="w-full mb-6 p-3.5 rounded-2xl bg-gradient-to-r from-indigo-500/10 via-violet-500/10 to-transparent border border-indigo-500/20 hover:border-indigo-500/40 flex items-center justify-between gap-3 text-left shadow-sm cursor-pointer transition-all"
+      >
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-8 h-8 rounded-xl bg-indigo-500/15 text-indigo-500 flex items-center justify-center flex-shrink-0">
             <Ticket className="w-4 h-4" />
@@ -724,18 +741,18 @@ const EventsTab = React.memo(function EventsTab({
               <span className="text-xs font-bold text-foreground dark:text-white truncate">
                 Digital Event Passes & Entry Tickets
               </span>
-              <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded-full bg-amber-500/15 text-amber-500 dark:text-amber-400 border border-amber-500/30 flex-shrink-0">
-                Coming Soon
+              <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex-shrink-0">
+                Live
               </span>
             </div>
             <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
-              Scannable check-in QR tickets, instant RSVP tracking & calendar sync are currently under development.
+              Claim your QR entry pass, verify physical venue attendance & unlock certificates.
             </p>
           </div>
         </div>
-        <div className="hidden sm:flex items-center gap-1.5 text-[11px] font-mono text-muted-foreground bg-black/[0.04] dark:bg-white/[0.05] px-2.5 py-1 rounded-lg border border-black/[0.06] dark:border-white/[0.06] flex-shrink-0">
-          <Sparkles className="w-3 h-3 text-amber-400" />
-          <span>In Development</span>
+        <div className="hidden sm:flex items-center gap-1.5 text-[11px] font-mono text-indigo-500 dark:text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-lg border border-indigo-500/20 flex-shrink-0">
+          <span>View Passes</span>
+          <ChevronRight className="w-3 h-3" />
         </div>
       </div>
 

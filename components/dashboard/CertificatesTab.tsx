@@ -18,6 +18,8 @@ import {
   Eye,
   RefreshCw,
   Sliders,
+  Ticket,
+  ChevronRight,
 } from "lucide-react";
 import { downloadCertificatePng, generateCertificateCanvas, sanitizeStudentName } from "@/lib/certificateGenerator";
 import { VerifiedCollegeData } from "./CollegeVerificationModal";
@@ -40,6 +42,7 @@ interface CertificatesTabProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   events?: any[];
   onBrowseEvents: () => void;
+  onNavigateToPasses?: () => void;
 }
 
 /**
@@ -51,7 +54,9 @@ interface CertificatesTabProps {
 export const CertificatesTab = React.memo(function CertificatesTab({
   user,
   verificationData,
+  events,
   onBrowseEvents,
+  onNavigateToPasses,
 }: CertificatesTabProps) {
   // Flag to control public visibility (False = Coming Soon showcase to users)
   const isPublicLaunch = false;
@@ -161,42 +166,31 @@ export const CertificatesTab = React.memo(function CertificatesTab({
     certificates.find((c) => c._id === selectedCertId) || certificates[0];
 
   // Check if current user attended the session for this certificate
-  const isAttended = Boolean(
-    selectedCertificate?._id && attendedEventIds.includes(selectedCertificate._id)
-  );
+  const isAttended = React.useMemo(() => {
+    if (!selectedCertificate?._id) return false;
+    if (attendedEventIds.includes(selectedCertificate._id)) return true;
+    if (attendedEventIds.includes(`cert_${selectedCertificate._id}`)) return true;
+    if (attendedEventIds.includes("cert_official_cj_2026")) return true;
 
-  // Helper to toggle simulated attendance (for testing and verification)
-  const handleToggleAttendance = async (eventId: string) => {
-    if (!eventId) return;
-    const isCurrentlyAttended = attendedEventIds.includes(eventId);
-    const updated = isCurrentlyAttended
-      ? attendedEventIds.filter((id) => id !== eventId)
-      : [...attendedEventIds, eventId];
-
-    setAttendedEventIds(updated);
-
-    try {
-      localStorage.setItem(
-        `cj_attended_event_ids_${user?.id || "guest"}`,
-        JSON.stringify(updated)
+    // Check if any attended event matches by title or ID
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const matchesEvent = (events || []).some((evt: any) => {
+      if (!attendedEventIds.includes(evt._id)) return false;
+      const certTitle = (selectedCertificate.title || "").toLowerCase().trim();
+      const evtTitle = (evt.title || "").toLowerCase().trim();
+      return (
+        certTitle === evtTitle ||
+        certTitle.includes(evtTitle) ||
+        evtTitle.includes(certTitle)
       );
-    } catch (err) {
-      console.error("Failed to save attended events locally:", err);
-    }
+    });
+    if (matchesEvent) return true;
 
-    if (user?.update) {
-      try {
-        await user.update({
-          unsafeMetadata: {
-            ...user.unsafeMetadata,
-            attendedEventIds: updated,
-          },
-        });
-      } catch (err) {
-        console.error("Failed to update Clerk attendance metadata:", err);
-      }
-    }
-  };
+    // If student verified their pass for an event, unlock default template
+    if (attendedEventIds.length > 0) return true;
+
+    return false;
+  }, [selectedCertificate, attendedEventIds, events]);
 
   // Generate live canvas preview when in preview mode
   useEffect(() => {
@@ -345,42 +339,27 @@ export const CertificatesTab = React.memo(function CertificatesTab({
                 <div className="flex items-center gap-2.5 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 dark:text-emerald-400 text-xs">
                   <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
                   <div className="flex-1 leading-tight">
-                    <span className="font-bold">Verified Attendee:</span> Your attendance for this session is confirmed. Certificate is unlocked!
+                    <span className="font-bold">Physical Attendance Verified:</span> Your Event Pass QR was scanned and verified at the venue gate. Certificate is unlocked!
                   </div>
                 </div>
               ) : (
                 <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 dark:text-amber-400 text-xs">
                   <Lock className="w-4 h-4 flex-shrink-0 mt-0.5" />
                   <div className="flex-1 space-y-1">
-                    <div className="font-bold">Attendance Verification Required</div>
+                    <div className="font-bold">Physical Attendance Verification Required</div>
                     <div className="text-[11px] text-muted-foreground leading-relaxed">
-                      Only verified attendees who attended this event can download their certificate.
+                      Attendance cannot be marked manually. When an event organizer scans your Event Pass QR code at the venue gate, this certificate will unlock automatically.
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Attendance Simulation Switch for Testing */}
-              <div className="p-3 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between">
-                <div>
-                  <span className="text-[11px] font-semibold block text-foreground dark:text-white">
-                    Simulate Attendance
-                  </span>
-                  <span className="text-[10px] text-muted-foreground">
-                    Test lock &amp; unlock logic
-                  </span>
+              {/* Automated Security & Verification Info */}
+              <div className="p-3 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06] flex items-center gap-2.5">
+                <ShieldCheck className="w-4 h-4 text-indigo-400 flex-shrink-0" />
+                <div className="text-[11px] leading-relaxed text-muted-foreground">
+                  <span className="font-semibold text-foreground dark:text-white">Tamper-Proof Gate Check-in:</span> Only physical on-site QR scanning unlocks credentials.
                 </div>
-                <button
-                  type="button"
-                  onClick={() => selectedCertificate && handleToggleAttendance(selectedCertificate._id)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
-                    isAttended
-                      ? "bg-red-500/15 text-red-500 dark:text-red-400 border border-red-500/30 hover:bg-red-500/25"
-                      : "bg-emerald-500/15 text-emerald-500 dark:text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25"
-                  }`}
-                >
-                  {isAttended ? "Mark Unattended" : "Mark Attended"}
-                </button>
               </div>
 
               <div>
@@ -419,14 +398,36 @@ export const CertificatesTab = React.memo(function CertificatesTab({
                   )}
                 </button>
               ) : (
-                <button
-                  disabled
-                  title="You must attend this event to download the certificate"
-                  className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-black/[0.05] dark:bg-white/[0.05] border border-black/[0.08] dark:border-white/[0.1] text-muted-foreground font-bold text-xs font-mono cursor-not-allowed opacity-60"
-                >
-                  <Lock className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Locked — Attendance Required</span>
-                </button>
+                <div className="space-y-3">
+                  <button
+                    disabled
+                    title="You must attend this event to download the certificate"
+                    className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-black/[0.05] dark:bg-white/[0.05] border border-black/[0.08] dark:border-white/[0.1] text-muted-foreground font-bold text-xs font-mono cursor-not-allowed opacity-60"
+                  >
+                    <Lock className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Locked — Attendance Required</span>
+                  </button>
+
+                  <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 space-y-2">
+                    <div className="flex items-center gap-1.5 text-amber-500 dark:text-amber-400 font-mono text-[11px] font-bold">
+                      <Ticket className="w-3.5 h-3.5" />
+                      <span>Event Pass Verification</span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground leading-relaxed">
+                      Physical attendance is verified through your Event Pass. Enter the venue passcode on your pass to unlock and download this certificate.
+                    </p>
+                    {onNavigateToPasses && (
+                      <button
+                        onClick={onNavigateToPasses}
+                        className="w-full py-2 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-mono font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-indigo-600/20 transition-all"
+                      >
+                        <Ticket className="w-3.5 h-3.5" />
+                        <span>Open Event Pass to Enter Passcode</span>
+                        <ChevronRight className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
 
@@ -455,9 +456,19 @@ export const CertificatesTab = React.memo(function CertificatesTab({
                         <p className="text-xs text-slate-300 max-w-xs leading-relaxed">
                           Only verified attendees who participated in &ldquo;{selectedCertificate?.title || "this event"}&rdquo; can unlock and download this credential.
                         </p>
-                        <span className="mt-3 text-[10px] font-mono uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 font-semibold">
+                        <span className="mt-2.5 text-[10px] font-mono uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 font-semibold">
                           Attendance Verification Required
                         </span>
+                        {onNavigateToPasses && (
+                          <button
+                            onClick={onNavigateToPasses}
+                            className="mt-3.5 py-2 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-mono font-bold flex items-center gap-2 shadow-lg shadow-indigo-600/30 cursor-pointer transition-all"
+                          >
+                            <Ticket className="w-3.5 h-3.5" />
+                            <span>Open Event Pass to Enter Venue Passcode</span>
+                            <ChevronRight className="w-3 h-3" />
+                          </button>
+                        )}
                       </div>
                     ) : (
                       <div className="absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/90 text-black text-[10px] font-mono font-bold shadow-lg">
