@@ -19,14 +19,13 @@ import {
   RefreshCw,
   Sliders,
 } from "lucide-react";
-import { downloadCertificatePng, generateCertificateCanvas } from "@/lib/certificateGenerator";
+import { downloadCertificatePng, generateCertificateCanvas, sanitizeStudentName } from "@/lib/certificateGenerator";
 import { VerifiedCollegeData } from "./CollegeVerificationModal";
+import { sanity } from "@/lib/sanity";
 
-interface SanityEvent {
+export interface SanityCertificate {
   _id: string;
   title: string;
-  date?: string;
-  location?: string;
   certificateTemplate?: {
     asset?: {
       url: string;
@@ -38,7 +37,8 @@ interface CertificatesTabProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   user: any;
   verificationData?: VerifiedCollegeData | null;
-  events?: SanityEvent[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  events?: any[];
   onBrowseEvents: () => void;
 }
 
@@ -46,24 +46,54 @@ interface CertificatesTabProps {
  * CertificatesTab
  * Default view is kept in "Coming Soon" mode so users don't see it yet.
  * A developer/admin preview mode is built-in so you can test generating and downloading certificates!
+ * Fetches certificate templates directly from Sanity document type 'certificate'.
  */
 export const CertificatesTab = React.memo(function CertificatesTab({
   user,
   verificationData,
-  events = [],
   onBrowseEvents,
 }: CertificatesTabProps) {
   // Flag to control public visibility (False = Coming Soon showcase to users)
   const isPublicLaunch = false;
 
+  const [certificates, setCertificates] = useState<SanityCertificate[]>([]);
+  const [selectedCertId, setSelectedCertId] = useState<string>("");
+  const [loadingCertificates, setLoadingCertificates] = useState(true);
+
   const [isNotified, setIsNotified] = useState(false);
   const [showAdminPreview, setShowAdminPreview] = useState(false);
-  const [selectedEventId, setSelectedEventId] = useState<string>("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
 
+  // ─── Fetch Certificates directly from Sanity CMS ───
+  useEffect(() => {
+    sanity
+      .fetch(
+        `*[_type == "certificate"] | order(_createdAt desc) {
+          _id,
+          title,
+          certificateTemplate{
+            asset->{
+              url
+            }
+          }
+        }`
+      )
+      .then((data: SanityCertificate[]) => {
+        setCertificates(data || []);
+        if (data && data.length > 0) {
+          setSelectedCertId(data[0]._id);
+        }
+        setLoadingCertificates(false);
+      })
+      .catch((err) => {
+        console.error("Failed to fetch certificates from Sanity:", err);
+        setLoadingCertificates(false);
+      });
+  }, []);
+
   // ─── Attendance State Management ───
-  // Reads verified attended event IDs from Clerk user metadata and user-scoped localStorage
+  // Reads verified attended event/certificate IDs from Clerk user metadata and user-scoped localStorage
   const [attendedEventIds, setAttendedEventIds] = useState<string[]>(() => {
     if (typeof window === "undefined") return [];
     try {
@@ -93,25 +123,23 @@ export const CertificatesTab = React.memo(function CertificatesTab({
   }, [user?.id, user?.unsafeMetadata?.attendedEventIds]);
 
   const firstName = user?.firstName || user?.fullName?.split(" ")[0] || "there";
-  const studentFullName =
+
+  // Sanitize user name so strictly ONLY the name is imprinted — never phone numbers, emails, or digits
+  const rawStudentName =
     verificationData?.studentName ||
     user?.fullName ||
     `${user?.firstName || ""} ${user?.lastName || ""}`.trim() ||
     "Aritra Konar";
+
+  const studentFullName = sanitizeStudentName(rawStudentName);
   const collegeName = verificationData?.collegeName || "University Institute of Technology, Burdwan University";
 
-  // Select first event by default when events load
-  useEffect(() => {
-    if (events.length > 0 && !selectedEventId) {
-      setSelectedEventId(events[0]._id);
-    }
-  }, [events, selectedEventId]);
+  const selectedCertificate =
+    certificates.find((c) => c._id === selectedCertId) || certificates[0];
 
-  const selectedEvent = events.find((e) => e._id === selectedEventId) || events[0];
-
-  // Check if current user attended the selected event
+  // Check if current user attended the session for this certificate
   const isAttended = Boolean(
-    selectedEvent?._id && attendedEventIds.includes(selectedEvent._id)
+    selectedCertificate?._id && attendedEventIds.includes(selectedCertificate._id)
   );
 
   // Helper to toggle simulated attendance (for testing and verification)
@@ -153,14 +181,12 @@ export const CertificatesTab = React.memo(function CertificatesTab({
 
     let active = true;
     async function updatePreview() {
-      if (!selectedEvent) return;
+      if (!selectedCertificate) return;
       try {
         const canvas = await generateCertificateCanvas({
           studentName: studentFullName,
-          collegeName: collegeName,
-          eventTitle: selectedEvent.title,
-          eventDate: selectedEvent.date,
-          templateUrl: selectedEvent.certificateTemplate?.asset?.url,
+          templateUrl: selectedCertificate.certificateTemplate?.asset?.url,
+          certificateTitle: selectedCertificate.title,
         });
         if (active) {
           setPreviewDataUrl(canvas.toDataURL("image/png"));
@@ -174,14 +200,14 @@ export const CertificatesTab = React.memo(function CertificatesTab({
     return () => {
       active = false;
     };
-  }, [showAdminPreview, isPublicLaunch, selectedEvent, studentFullName, collegeName]);
+  }, [showAdminPreview, isPublicLaunch, selectedCertificate, studentFullName]);
 
   const handleDownload = async () => {
-    if (!selectedEvent) return;
+    if (!selectedCertificate) return;
 
     // Strict Gating: Ensure only attendees can download
     if (!isAttended) {
-      alert("Access Denied: You must be a verified attendee of this event to download your certificate.");
+      alert("Access Denied: You must be a verified attendee to download your certificate.");
       return;
     }
 
@@ -189,10 +215,8 @@ export const CertificatesTab = React.memo(function CertificatesTab({
     try {
       await downloadCertificatePng({
         studentName: studentFullName,
-        collegeName: collegeName,
-        eventTitle: selectedEvent.title,
-        eventDate: selectedEvent.date,
-        templateUrl: selectedEvent.certificateTemplate?.asset?.url,
+        templateUrl: selectedCertificate.certificateTemplate?.asset?.url,
+        certificateTitle: selectedCertificate.title,
       });
     } catch (err) {
       console.error("Download failed:", err);
@@ -249,7 +273,7 @@ export const CertificatesTab = React.memo(function CertificatesTab({
                   Dynamic Certificate Generator Engine
                 </h3>
                 <p className="text-xs text-muted-foreground">
-                  Loads template from Sanity &amp; imprints student credentials with attendance verification.
+                  Loads template from Sanity &amp; imprints only student name directly onto certificate template.
                 </p>
               </div>
             </div>
@@ -264,22 +288,33 @@ export const CertificatesTab = React.memo(function CertificatesTab({
             <div className="space-y-4">
               <div>
                 <label className="text-xs font-mono text-muted-foreground block mb-1.5">
-                  Select Event
+                  Sanity Certificate Document
                 </label>
-                <select
-                  value={selectedEventId}
-                  onChange={(e) => setSelectedEventId(e.target.value)}
-                  className="w-full text-xs font-mono p-2.5 rounded-xl bg-black/[0.03] dark:bg-white/[0.05] border border-black/[0.08] dark:border-white/[0.1] text-foreground dark:text-white outline-none cursor-pointer"
-                >
-                  {events.map((evt) => {
-                    const evtAttended = attendedEventIds.includes(evt._id);
-                    return (
-                      <option key={evt._id} value={evt._id} className="bg-background text-foreground">
-                        {evt.title} {evtAttended ? "✓ (Attended)" : "🔒 (Locked)"}
-                      </option>
-                    );
-                  })}
-                </select>
+                {loadingCertificates ? (
+                  <div className="p-2.5 rounded-xl bg-black/[0.03] dark:bg-white/[0.05] border border-black/[0.08] dark:border-white/[0.1] text-xs font-mono text-muted-foreground flex items-center gap-2">
+                    <RefreshCw className="w-3 h-3 animate-spin" />
+                    <span>Loading templates from Sanity...</span>
+                  </div>
+                ) : certificates.length === 0 ? (
+                  <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 text-xs font-mono">
+                    No certificate documents uploaded in Sanity yet.
+                  </div>
+                ) : (
+                  <select
+                    value={selectedCertId}
+                    onChange={(e) => setSelectedCertId(e.target.value)}
+                    className="w-full text-xs font-mono p-2.5 rounded-xl bg-black/[0.03] dark:bg-white/[0.05] border border-black/[0.08] dark:border-white/[0.1] text-foreground dark:text-white outline-none cursor-pointer"
+                  >
+                    {certificates.map((cert) => {
+                      const certAttended = attendedEventIds.includes(cert._id);
+                      return (
+                        <option key={cert._id} value={cert._id} className="bg-background text-foreground">
+                          {cert.title} {certAttended ? "✓ (Attended)" : "🔒 (Locked)"}
+                        </option>
+                      );
+                    })}
+                  </select>
+                )}
               </div>
 
               {/* Attendance Verification Status Badge */}
@@ -287,7 +322,7 @@ export const CertificatesTab = React.memo(function CertificatesTab({
                 <div className="flex items-center gap-2.5 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 dark:text-emerald-400 text-xs">
                   <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
                   <div className="flex-1 leading-tight">
-                    <span className="font-bold">Verified Attendee:</span> Your attendance for this event is confirmed. Certificate is unlocked!
+                    <span className="font-bold">Verified Attendee:</span> Your attendance for this session is confirmed. Certificate is unlocked!
                   </div>
                 </div>
               ) : (
@@ -314,7 +349,7 @@ export const CertificatesTab = React.memo(function CertificatesTab({
                 </div>
                 <button
                   type="button"
-                  onClick={() => selectedEvent && handleToggleAttendance(selectedEvent._id)}
+                  onClick={() => selectedCertificate && handleToggleAttendance(selectedCertificate._id)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
                     isAttended
                       ? "bg-red-500/15 text-red-500 dark:text-red-400 border border-red-500/30 hover:bg-red-500/25"
@@ -327,27 +362,21 @@ export const CertificatesTab = React.memo(function CertificatesTab({
 
               <div>
                 <label className="text-xs font-mono text-muted-foreground block mb-1.5">
-                  Imprinted Name (From Profile)
+                  Imprinted Name (Exclusively Student Name)
                 </label>
                 <div className="p-2.5 rounded-xl bg-black/[0.03] dark:bg-white/[0.05] border border-black/[0.08] dark:border-white/[0.1] text-xs font-semibold text-foreground dark:text-white">
                   {studentFullName}
                 </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-mono text-muted-foreground block mb-1.5">
-                  Institution
-                </label>
-                <div className="p-2.5 rounded-xl bg-black/[0.03] dark:bg-white/[0.05] border border-black/[0.08] dark:border-white/[0.1] text-xs text-muted-foreground truncate">
-                  {collegeName}
-                </div>
+                <p className="text-[10px] font-mono text-muted-foreground/70 mt-1">
+                  * Only real attendee name is imprinted on the template (no phone numbers or extraneous details).
+                </p>
               </div>
 
               {/* Gated Download Button */}
               {isAttended ? (
                 <button
                   onClick={handleDownload}
-                  disabled={isGenerating}
+                  disabled={isGenerating || !selectedCertificate}
                   className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-xs font-mono shadow-lg shadow-indigo-500/25 transition-all cursor-pointer disabled:opacity-50"
                 >
                   {isGenerating ? (
@@ -397,7 +426,7 @@ export const CertificatesTab = React.memo(function CertificatesTab({
                           Certificate Locked
                         </h4>
                         <p className="text-xs text-slate-300 max-w-xs leading-relaxed">
-                          Only verified attendees who participated in &ldquo;{selectedEvent?.title}&rdquo; can unlock and download this credential.
+                          Only verified attendees who participated in &ldquo;{selectedCertificate?.title || "this event"}&rdquo; can unlock and download this credential.
                         </p>
                         <span className="mt-3 text-[10px] font-mono uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 font-semibold">
                           Attendance Verification Required
