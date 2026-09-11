@@ -17,7 +17,6 @@ import {
   Download,
   Eye,
   RefreshCw,
-  Sliders,
   Ticket,
   ChevronRight,
 } from "lucide-react";
@@ -66,7 +65,6 @@ export const CertificatesTab = React.memo(function CertificatesTab({
   const [loadingCertificates, setLoadingCertificates] = useState(true);
 
   const [isNotified, setIsNotified] = useState(false);
-  const [showAdminPreview, setShowAdminPreview] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
 
@@ -194,7 +192,7 @@ export const CertificatesTab = React.memo(function CertificatesTab({
 
   // Generate live canvas preview when in preview mode
   useEffect(() => {
-    if (!showAdminPreview && !isPublicLaunch) return;
+    if (!isPublicLaunch) return;
 
     let active = true;
     async function updatePreview() {
@@ -217,7 +215,7 @@ export const CertificatesTab = React.memo(function CertificatesTab({
     return () => {
       active = false;
     };
-  }, [showAdminPreview, isPublicLaunch, selectedCertificate, studentFullName]);
+  }, [isPublicLaunch, selectedCertificate, studentFullName]);
 
   const handleDownload = async () => {
     if (!selectedCertificate) return;
@@ -263,22 +261,10 @@ export const CertificatesTab = React.memo(function CertificatesTab({
             Official verified certifications for events, hackathons, and competitions organized by Coding Junction.
           </p>
         </div>
-
-        {/* Admin Secret Testing Trigger (Kept subtle for testing without revealing to users) */}
-        {!isPublicLaunch && (
-          <button
-            onClick={() => setShowAdminPreview(!showAdminPreview)}
-            title="Toggle Engine Testing Mode"
-            className="self-start sm:self-auto text-[11px] font-mono text-muted-foreground/60 hover:text-indigo-400 transition-colors cursor-pointer flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-black/[0.04] dark:border-white/[0.06]"
-          >
-            <Sliders className="w-3 h-3" />
-            <span>{showAdminPreview ? "Close Engine Preview" : "Test Certificate Engine"}</span>
-          </button>
-        )}
       </div>
 
-      {/* ─── ACTIVE CERTIFICATE ENGINE (Revealed in test mode or when isPublicLaunch is enabled) ─── */}
-      {(isPublicLaunch || showAdminPreview) && (
+      {/* ─── ACTIVE CERTIFICATE ENGINE (Revealed when isPublicLaunch is enabled) ─── */}
+      {isPublicLaunch && (
         <div className="rounded-2xl border border-indigo-500/30 bg-gradient-to-b from-indigo-500/[0.06] to-transparent p-6 sm:p-8 space-y-6">
           <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] pb-4">
             <div className="flex items-center gap-2.5">

@@ -254,19 +254,21 @@ const Event = () => {
 
                   if (isRegistered) {
                     return (
-                      <div className="flex flex-col sm:flex-row items-center gap-3">
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25">
+                      <div className="flex items-center gap-3">
+                        <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-mono font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25">
                           <Check className="w-3.5 h-3.5" />
-                          Pass Generated
+                          Registered
                         </span>
-                        <Link
-                          href="/Dashboard"
-                          className="group/btn inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-semibold text-sm shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:from-indigo-500 hover:to-violet-500 transition-all duration-300"
-                        >
-                          <Ticket className="h-4 w-4" />
-                          <span>View Event Pass</span>
-                          <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
-                        </Link>
+                        {event.registerLink && (
+                          <a
+                            href={event.registerLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-indigo-500 hover:text-indigo-600 font-medium underline underline-offset-4"
+                          >
+                            View Form ↗
+                          </a>
+                        )}
                       </div>
                     );
                   }
@@ -295,8 +297,7 @@ const Event = () => {
                         onClick={() => handleRegisterClick(event)}
                         className="group/btn inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-semibold text-sm shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:from-indigo-500 hover:to-violet-500 transition-all duration-300 cursor-pointer active:scale-[0.98]"
                       >
-                        <Ticket className="h-4 w-4 text-indigo-200" />
-                        <span>Register & Get Pass</span>
+                        <span>Register for Event</span>
                         <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
                       </button>
                     );

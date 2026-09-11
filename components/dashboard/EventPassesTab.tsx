@@ -26,6 +26,8 @@ import {
   KeyRound,
   Award,
   RefreshCw,
+  Lock,
+  CalendarDays,
 } from "lucide-react";
 
 import { registerForEvent, getRegisteredEventIds, downloadEventPassPng } from "@/lib/eventPass";
@@ -66,8 +68,12 @@ export const EventPassesTab: React.FC<EventPassesTabProps> = ({
   const [isNotified, setIsNotified] = useState(false);
   const [localAttendedIds, setLocalAttendedIds] = useState<string[]>([]);
 
+  // Flag to control public visibility (False = Coming Soon showcase to all users)
+  const isPublicLaunch = false;
+
   const userId = user?.id || "USER_ANON";
   const userName = user?.fullName || user?.firstName || "Community Member";
+  const firstName = user?.firstName || user?.fullName?.split(" ")[0] || "there";
 
   // Load RSVP'd event IDs from shared event pass system & listen for live events
   useEffect(() => {
@@ -327,268 +333,354 @@ export const EventPassesTab: React.FC<EventPassesTabProps> = ({
       transition={{ duration: 0.15 }}
       className="space-y-6"
     >
-      {/* ─── Header with "Coming Soon" Badge ─── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2">
+      {/* ─── Standardized Header ─── */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h2 className="text-2xl font-bold text-foreground dark:text-white tracking-tight flex items-center gap-2">
-              <Ticket className="w-6 h-6 text-indigo-500" />
-              <span>Event Passes & Entry Tickets</span>
-            </h2>
+          <h2 className="text-2xl font-bold text-foreground dark:text-white tracking-tight flex items-center gap-2.5">
+            <Ticket className="w-6 h-6 text-indigo-500" />
+            <span>Event Passes & Gate Check-in</span>
             <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-500 dark:text-amber-400 border border-amber-500/30">
-              Coming Soon
+              {isPublicLaunch ? "Live" : "Coming Soon"}
             </span>
-          </div>
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            Digital QR tickets for fast check-in, RSVP tracking, countdown timers, and event calendar sync.
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Official digital boarding passes, gate check-in verification, and event credentials.
           </p>
         </div>
-
-        {/* Action Button: Notify Me */}
-        <button
-          onClick={() => setIsNotified(true)}
-          disabled={isNotified}
-          className={`inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold font-mono transition-all duration-200 cursor-pointer flex-shrink-0 ${
-            isNotified
-              ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
-              : "bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 hover:bg-indigo-500/25"
-          }`}
-        >
-          {isNotified ? (
-            <>
-              <Check className="w-3.5 h-3.5" />
-              <span>You will be notified!</span>
-            </>
-          ) : (
-            <>
-              <Bell className="w-3.5 h-3.5" />
-              <span>Notify When Live</span>
-            </>
-          )}
-        </button>
       </div>
 
-      {/* ─── Coming Soon Beta Notice Banner ─── */}
-      <div className="relative overflow-hidden rounded-2xl border border-amber-500/25 dark:border-amber-500/30 bg-gradient-to-r from-amber-500/[0.08] via-indigo-500/[0.04] to-transparent p-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-500 flex-shrink-0">
-              <Sparkles className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-bold text-sm text-foreground dark:text-white">
-                  Automated Check-in System [Beta Preview]
-                </h3>
-                <span className="text-[9px] font-mono font-bold uppercase px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-500">
-                  Feature In Dev
-                </span>
+      {/* ─── Coming Soon Showcase Card ─── */}
+      {!isPublicLaunch && (
+        <div className="space-y-6">
+          <div className="relative overflow-hidden rounded-2xl border border-amber-500/25 dark:border-amber-500/30 bg-gradient-to-b from-amber-500/[0.07] via-indigo-500/[0.03] to-transparent p-8 md:p-12 text-center">
+            {/* Ambient Glows */}
+            <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-96 bg-amber-500/15 rounded-full blur-xl transform-gpu pointer-events-none" />
+            <div className="absolute -bottom-24 right-10 w-72 h-72 bg-indigo-500/10 rounded-full blur-xl transform-gpu pointer-events-none" />
+
+            <div className="relative z-10 max-w-2xl mx-auto flex flex-col items-center">
+              {/* Badge */}
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-semibold uppercase tracking-wider mb-6 animate-pulse">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Feature In Development</span>
               </div>
-              <p className="text-xs text-muted-foreground mt-0.5 max-w-2xl leading-relaxed">
-                We are setting up on-site digital QR ticket scanners for upcoming club workshops and hackathons. You can preview your interactive digital ticket, sync dates to Google Calendar, and check attendance history below!
-              </p>
-            </div>
-          </div>
 
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-xs font-mono text-muted-foreground bg-black/[0.04] dark:bg-white/[0.04] px-3 py-1.5 rounded-lg border border-black/[0.06] dark:border-white/[0.06]">
-              Launch: Q4 2026
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* ─── Sub Navigation Tabs ─── */}
-      <div className="flex items-center gap-2 border-b border-black/[0.06] dark:border-white/[0.06] pb-3">
-        <button
-          onClick={() => setActiveSubTab("tickets")}
-          className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
-            activeSubTab === "tickets"
-              ? "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30"
-              : "text-muted-foreground hover:text-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
-          }`}
-        >
-          <Ticket className="w-3.5 h-3.5" />
-          <span>My Passes ({myRegisteredUpcomingEvents.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveSubTab("browse")}
-          className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
-            activeSubTab === "browse"
-              ? "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30"
-              : "text-muted-foreground hover:text-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
-          }`}
-        >
-          <Calendar className="w-3.5 h-3.5" />
-          <span>All Upcoming ({upcomingEvents.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveSubTab("history")}
-          className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
-            activeSubTab === "history"
-              ? "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30"
-              : "text-muted-foreground hover:text-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
-          }`}
-        >
-          <History className="w-3.5 h-3.5" />
-          <span>Attendance History ({attendedEvents.length})</span>
-        </button>
-      </div>
-
-      {/* ─── TAB 1: MY ACTIVE PASSES & TICKETS ─── */}
-      {activeSubTab === "tickets" && (
-        <div className="space-y-4">
-          {eventsLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <div className="w-8 h-8 border-3 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
-            </div>
-          ) : myRegisteredUpcomingEvents.length === 0 ? (
-            <div className="text-center py-16 rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0c0d14] p-8">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center mx-auto mb-3 text-indigo-500">
-                <Ticket className="w-6 h-6" />
-              </div>
-              <h4 className="font-bold text-foreground dark:text-white text-base">No Active Passes</h4>
-              <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-                You haven&apos;t registered for any event passes yet. Digital entry passes will appear here once the feature goes live.
-              </p>
-              <button
-                onClick={() => setActiveSubTab("browse")}
-                className="mt-4 px-4 py-2 rounded-xl bg-indigo-500 text-white text-xs font-bold font-mono hover:opacity-90 transition-opacity cursor-pointer"
-              >
-                Browse Upcoming Events &rarr;
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {myRegisteredUpcomingEvents.map((event) => (
-                <TicketCard
-                  key={event._id}
-                  event={event}
-                  userId={userId}
-                  userName={userName}
-                  isRegistered={true}
-                  onToggleRSVP={(e) => handleToggleRSVP(event._id, e)}
-                  onViewPass={() => setSelectedTicketEvent(event)}
-                  onDownloadPass={() => handleDownloadPass(event)}
-                  onGoogleCalendar={() => window.open(getGoogleCalendarUrl(event), "_blank")}
-                  onDownloadICal={(e) => handleDownloadICal(event, e)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ─── TAB 2: BROWSE & RSVP TO GENERATE TICKETS ─── */}
-      {activeSubTab === "browse" && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {upcomingEvents.map((event) => {
-              const isRegistered = registeredEventIds.includes(event._id);
-              return (
-                <TicketCard
-                  key={event._id}
-                  event={event}
-                  userId={userId}
-                  userName={userName}
-                  isRegistered={isRegistered}
-                  onToggleRSVP={(e) => handleToggleRSVP(event._id, e)}
-                  onViewPass={() => setSelectedTicketEvent(event)}
-                  onDownloadPass={() => handleDownloadPass(event)}
-                  onGoogleCalendar={() => window.open(getGoogleCalendarUrl(event), "_blank")}
-                  onDownloadICal={(e) => handleDownloadICal(event, e)}
-                />
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ─── TAB 3: ATTENDANCE HISTORY ─── */}
-      {activeSubTab === "history" && (
-        <div className="space-y-4">
-          {attendedEvents.length === 0 ? (
-            <div className="text-center py-16 rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0c0d14] p-8">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center mx-auto mb-3 text-emerald-500">
-                <History className="w-6 h-6" />
-              </div>
-              <h4 className="font-bold text-foreground dark:text-white text-base">
-                No Attended Sessions on Record
-              </h4>
-              <p className="text-xs text-muted-foreground mt-1.5 max-w-md mx-auto leading-relaxed">
-                No attended sessions on record yet. Scan your QR pass at our next event to log attendance.
-              </p>
-              <div className="mt-5 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.08] text-[11px] font-mono text-muted-foreground">
-                <QrCode className="w-3.5 h-3.5 text-indigo-400" />
-                <span>QR scanner check-in active at upcoming offline sessions</span>
-              </div>
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0c0d14] p-5">
-              <div className="flex items-center justify-between mb-4 pb-3 border-b border-black/[0.06] dark:border-white/[0.06]">
-                <div className="flex items-center gap-2">
-                  <History className="w-4 h-4 text-emerald-500" />
-                  <h4 className="font-bold text-sm text-foreground dark:text-white">
-                    Verified Attendance Record
-                  </h4>
+              {/* Glowing Ticket Emblem with Lock */}
+              <div className="relative mb-6">
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-amber-500 to-indigo-500 p-[1px] shadow-2xl shadow-amber-500/25">
+                  <div className="w-full h-full rounded-2xl bg-black/85 dark:bg-black/95 backdrop-blur-xl flex items-center justify-center text-amber-400">
+                    <Ticket className="w-10 h-10" />
+                  </div>
                 </div>
-                <span className="text-[10px] font-mono text-muted-foreground uppercase">
-                  {attendedEvents.length} {attendedEvents.length === 1 ? "Session" : "Sessions"} Logged
-                </span>
+                <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-amber-500 text-black flex items-center justify-center text-xs font-bold shadow-md">
+                  <Lock className="w-3.5 h-3.5" />
+                </div>
               </div>
 
-              <div className="divide-y divide-black/[0.04] dark:divide-white/[0.04]">
-                {attendedEvents.map((event) => (
-                  <div key={event._id} className="py-3 flex items-center justify-between gap-4">
-                    <div className="min-w-0">
-                      <p className="font-bold text-xs text-foreground dark:text-white truncate">
-                        {event.title}
-                      </p>
-                      <div className="flex items-center gap-3 text-[11px] text-muted-foreground font-mono mt-0.5">
-                        <span>
-                          {event.date
-                            ? new Date(event.date).toLocaleDateString("en-IN", {
-                                day: "numeric",
-                                month: "short",
-                                year: "numeric",
-                              })
-                            : "Past Event"}
-                        </span>
-                        {event.location && <span>• {event.location}</span>}
-                      </div>
-                    </div>
+              {/* Heading */}
+              <h3 className="text-2xl md:text-3xl font-extrabold text-foreground dark:text-white tracking-tight mb-3">
+                Digital Event Passes & Gate Check-in
+              </h3>
 
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex-shrink-0">
-                      <CheckCircle2 className="w-3 h-3" />
-                      <span>Attended</span>
+              <p className="text-sm md:text-base text-muted-foreground leading-relaxed mb-8">
+                Hey <span className="text-foreground dark:text-white font-medium">{firstName}</span>, we are engineering an official digital ticketing and automated check-in engine for Coding Junction. When you register for workshops, hackathons, and offline events, your personalized admission pass will appear right here for seamless venue verification and instant certificate unlocking.
+              </p>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap items-center justify-center gap-3 w-full sm:w-auto">
+                <button
+                  onClick={() => setIsNotified(true)}
+                  disabled={isNotified}
+                  className={`inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-xs md:text-sm transition-all duration-200 cursor-pointer ${
+                    isNotified
+                      ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 cursor-default"
+                      : "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black shadow-lg shadow-amber-500/20"
+                  }`}
+                >
+                  {isNotified ? (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span>You will be notified!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Bell className="w-4 h-4" />
+                      <span>Notify Me on Launch</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  onClick={onBrowseEvents}
+                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-foreground dark:text-white border border-black/10 dark:border-white/10 font-semibold text-xs md:text-sm transition-all duration-200 cursor-pointer"
+                >
+                  <CalendarDays className="w-4 h-4 text-indigo-400" />
+                  <span>Explore Upcoming Events</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* 3-Pillar Feature Preview */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-5 rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0c0d14] space-y-2">
+              <div className="w-9 h-9 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-500">
+                <Ticket className="w-4 h-4" />
+              </div>
+              <h4 className="text-sm font-bold text-foreground dark:text-white">Digital Boarding Passes</h4>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Automated entry passes with attendee details, ticket IDs, and vector barcodes generated upon event registration.
+              </p>
+            </div>
+
+            <div className="p-5 rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0c0d14] space-y-2">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                <ShieldCheck className="w-4 h-4" />
+              </div>
+              <h4 className="text-sm font-bold text-foreground dark:text-white">Instant Gate Verification</h4>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Frictionless physical attendance verification at the event entrance using passcodes or QR scanning.
+              </p>
+            </div>
+
+            <div className="p-5 rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0c0d14] space-y-2">
+              <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500">
+                <Award className="w-4 h-4" />
+              </div>
+              <h4 className="text-sm font-bold text-foreground dark:text-white">Certificate Eligibility</h4>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Immediately unlock and download your official verified certificate as soon as your attendance is verified.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── ACTIVE EVENT PASS ENGINE (Revealed when isPublicLaunch is enabled) ─── */}
+      {isPublicLaunch && (
+        <div className="space-y-6">
+          {/* ─── Coming Soon Beta Notice Banner ─── */}
+          <div className="relative overflow-hidden rounded-2xl border border-amber-500/25 dark:border-amber-500/30 bg-gradient-to-r from-amber-500/[0.08] via-indigo-500/[0.04] to-transparent p-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-500 flex-shrink-0">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-sm text-foreground dark:text-white">
+                      Automated Check-in System [Admin Test Mode Active]
+                    </h3>
+                    <span className="text-[9px] font-mono font-bold uppercase px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-500">
+                      Testing Mode
                     </span>
                   </div>
-                ))}
+                  <p className="text-xs text-muted-foreground mt-0.5 max-w-2xl leading-relaxed">
+                    You are currently testing the digital boarding pass engine. Passes can be claimed, verified with gate passcodes, and downloaded as high-res PNG tickets.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className="text-xs font-mono text-muted-foreground bg-black/[0.04] dark:bg-white/[0.04] px-3 py-1.5 rounded-lg border border-black/[0.06] dark:border-white/[0.06]">
+                  Launch: Q4 2026
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* ─── Sub Navigation Tabs ─── */}
+          <div className="flex items-center gap-2 border-b border-black/[0.06] dark:border-white/[0.06] pb-3">
+            <button
+              onClick={() => setActiveSubTab("tickets")}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+                activeSubTab === "tickets"
+                  ? "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30"
+                  : "text-muted-foreground hover:text-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
+              }`}
+            >
+              <Ticket className="w-3.5 h-3.5" />
+              <span>My Passes ({myRegisteredUpcomingEvents.length})</span>
+            </button>
+
+            <button
+              onClick={() => setActiveSubTab("browse")}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+                activeSubTab === "browse"
+                  ? "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30"
+                  : "text-muted-foreground hover:text-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
+              }`}
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              <span>All Upcoming ({upcomingEvents.length})</span>
+            </button>
+
+            <button
+              onClick={() => setActiveSubTab("history")}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+                activeSubTab === "history"
+                  ? "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30"
+                  : "text-muted-foreground hover:text-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
+              }`}
+            >
+              <History className="w-3.5 h-3.5" />
+              <span>Attendance History ({attendedEvents.length})</span>
+            </button>
+          </div>
+
+          {/* ─── TAB 1: MY ACTIVE PASSES & TICKETS ─── */}
+          {activeSubTab === "tickets" && (
+            <div className="space-y-4">
+              {eventsLoading ? (
+                <div className="flex items-center justify-center py-20">
+                  <div className="w-8 h-8 border-3 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+                </div>
+              ) : myRegisteredUpcomingEvents.length === 0 ? (
+                <div className="text-center py-16 rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0c0d14] p-8">
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center mx-auto mb-3 text-indigo-500">
+                    <Ticket className="w-6 h-6" />
+                  </div>
+                  <h4 className="font-bold text-foreground dark:text-white text-base">No Active Passes</h4>
+                  <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+                    You haven&apos;t registered for any event passes yet. Digital entry passes will appear here once you claim one.
+                  </p>
+                  <button
+                    onClick={() => setActiveSubTab("browse")}
+                    className="mt-4 px-4 py-2 rounded-xl bg-indigo-500 text-white text-xs font-bold font-mono hover:opacity-90 transition-opacity cursor-pointer"
+                  >
+                    Browse Upcoming Events &rarr;
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {myRegisteredUpcomingEvents.map((event) => (
+                    <TicketCard
+                      key={event._id}
+                      event={event}
+                      userId={userId}
+                      userName={userName}
+                      isRegistered={true}
+                      onToggleRSVP={(e) => handleToggleRSVP(event._id, e)}
+                      onViewPass={() => setSelectedTicketEvent(event)}
+                      onDownloadPass={() => handleDownloadPass(event)}
+                      onGoogleCalendar={() => window.open(getGoogleCalendarUrl(event), "_blank")}
+                      onDownloadICal={(e) => handleDownloadICal(event, e)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ─── TAB 2: BROWSE & RSVP TO GENERATE TICKETS ─── */}
+          {activeSubTab === "browse" && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {upcomingEvents.map((event) => {
+                  const isRegistered = registeredEventIds.includes(event._id);
+                  return (
+                    <TicketCard
+                      key={event._id}
+                      event={event}
+                      userId={userId}
+                      userName={userName}
+                      isRegistered={isRegistered}
+                      onToggleRSVP={(e) => handleToggleRSVP(event._id, e)}
+                      onViewPass={() => setSelectedTicketEvent(event)}
+                      onDownloadPass={() => handleDownloadPass(event)}
+                      onGoogleCalendar={() => window.open(getGoogleCalendarUrl(event), "_blank")}
+                      onDownloadICal={(e) => handleDownloadICal(event, e)}
+                    />
+                  );
+                })}
               </div>
             </div>
           )}
+
+          {/* ─── TAB 3: ATTENDANCE HISTORY ─── */}
+          {activeSubTab === "history" && (
+            <div className="space-y-4">
+              {attendedEvents.length === 0 ? (
+                <div className="text-center py-16 rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0c0d14] p-8">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center mx-auto mb-3 text-emerald-500">
+                    <History className="w-6 h-6" />
+                  </div>
+                  <h4 className="font-bold text-foreground dark:text-white text-base">
+                    No Attended Sessions on Record
+                  </h4>
+                  <p className="text-xs text-muted-foreground mt-1.5 max-w-md mx-auto leading-relaxed">
+                    No attended sessions on record yet. Scan your pass at our next event to log attendance.
+                  </p>
+                  <div className="mt-5 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.08] text-[11px] font-mono text-muted-foreground">
+                    <QrCode className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>Passcode check-in active at upcoming offline sessions</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0c0d14] p-5">
+                  <div className="flex items-center justify-between mb-4 pb-3 border-b border-black/[0.06] dark:border-white/[0.06]">
+                    <div className="flex items-center gap-2">
+                      <History className="w-4 h-4 text-emerald-500" />
+                      <h4 className="font-bold text-sm text-foreground dark:text-white">
+                        Verified Attendance Record
+                      </h4>
+                    </div>
+                    <span className="text-[10px] font-mono text-muted-foreground uppercase">
+                      {attendedEvents.length} {attendedEvents.length === 1 ? "Session" : "Sessions"} Logged
+                    </span>
+                  </div>
+
+                  <div className="divide-y divide-black/[0.04] dark:divide-white/[0.04]">
+                    {attendedEvents.map((event) => (
+                      <div key={event._id} className="py-3 flex items-center justify-between gap-4">
+                        <div className="min-w-0">
+                          <p className="font-bold text-xs text-foreground dark:text-white truncate">
+                            {event.title}
+                          </p>
+                          <div className="flex items-center gap-3 text-[11px] text-muted-foreground font-mono mt-0.5">
+                            <span>
+                              {event.date
+                                ? new Date(event.date).toLocaleDateString("en-IN", {
+                                    day: "numeric",
+                                    month: "short",
+                                    year: "numeric",
+                                  })
+                                : "Past Event"}
+                            </span>
+                            {event.location && <span>• {event.location}</span>}
+                          </div>
+                        </div>
+
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex-shrink-0">
+                          <CheckCircle2 className="w-3 h-3" />
+                          <span>Attended</span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ─── MODAL: INTERACTIVE DIGITAL ENTRY QR TICKET ─── */}
+          <AnimatePresence>
+            {selectedTicketEvent && (
+              <EventTicketModal
+                event={selectedTicketEvent}
+                userId={userId}
+                userName={userName}
+                isAttended={attendedEventIds.includes(selectedTicketEvent._id)}
+                onVerifyPasscode={(code) => handleVerifyPasscode(selectedTicketEvent, code)}
+                onClose={() => setSelectedTicketEvent(null)}
+                onDownloadPass={() => handleDownloadPass(selectedTicketEvent)}
+                onGoogleCalendar={() => window.open(getGoogleCalendarUrl(selectedTicketEvent), "_blank")}
+                onDownloadICal={(e) => handleDownloadICal(selectedTicketEvent, e)}
+                onNavigateToCertificates={onNavigateToCertificates}
+              />
+            )}
+          </AnimatePresence>
         </div>
       )}
-
-      {/* ─── MODAL: INTERACTIVE DIGITAL ENTRY QR TICKET ─── */}
-      <AnimatePresence>
-        {selectedTicketEvent && (
-          <EventTicketModal
-            event={selectedTicketEvent}
-            userId={userId}
-            userName={userName}
-            isAttended={attendedEventIds.includes(selectedTicketEvent._id)}
-            onVerifyPasscode={(code) => handleVerifyPasscode(selectedTicketEvent, code)}
-            onClose={() => setSelectedTicketEvent(null)}
-            onDownloadPass={() => handleDownloadPass(selectedTicketEvent)}
-            onGoogleCalendar={() => window.open(getGoogleCalendarUrl(selectedTicketEvent), "_blank")}
-            onDownloadICal={(e) => handleDownloadICal(selectedTicketEvent, e)}
-            onNavigateToCertificates={onNavigateToCertificates}
-          />
-        )}
-      </AnimatePresence>
     </motion.div>
   );
 };
