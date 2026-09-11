@@ -61,19 +61,69 @@ export function NotificationCenter({
   const [isOpen, setIsOpen] = useState(false);
   const [readIds, setReadIds] = useState<string[]>([]);
   const [dismissedIds, setDismissedIds] = useState<string[]>([]);
+  const [lastMarkedAllReadAt, setLastMarkedAllReadAt] = useState<number>(0);
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [registeredEventIds, setRegisteredEventIds] = useState<string[]>([]);
   const [mounted, setMounted] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Load read / dismissed IDs and registered event IDs from localStorage
+  // Storage key scoped to authenticated user ID
+  const storageKey = user?.id ? `cj_notif_state_${user.id}` : "cj_notif_state_anon";
+
+  // Load read / dismissed / lastMarkedAllReadAt from Clerk metadata & localStorage
   useEffect(() => {
     try {
-      const savedRead = localStorage.getItem("cj_notif_read_ids_v1");
-      if (savedRead) setReadIds(JSON.parse(savedRead));
+      // 1. Clerk cloud metadata
+      const clerkState = user?.unsafeMetadata?.notificationState as
+        | { readIds?: string[]; dismissedIds?: string[]; lastMarkedAllReadAt?: number }
+        | undefined;
 
-      const savedDismissed = localStorage.getItem("cj_notif_dismissed_ids_v1");
-      if (savedDismissed) setDismissedIds(JSON.parse(savedDismissed));
+      // 2. User-scoped localStorage or legacy fallback
+      const saved =
+        localStorage.getItem(storageKey) || localStorage.getItem("cj_notif_read_ids_v1");
+      const legacyDismissed = localStorage.getItem("cj_notif_dismissed_ids_v1");
+
+      let localParsed: { readIds?: string[]; dismissedIds?: string[]; lastMarkedAllReadAt?: number } = {};
+      if (saved) {
+        try {
+          const p = JSON.parse(saved);
+          if (Array.isArray(p)) {
+            localParsed.readIds = p;
+          } else if (p && typeof p === "object") {
+            localParsed = p;
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      if (legacyDismissed) {
+        try {
+          const pD = JSON.parse(legacyDismissed);
+          if (Array.isArray(pD)) {
+            localParsed.dismissedIds = Array.from(
+              new Set([...(localParsed.dismissedIds || []), ...pD])
+            );
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      const mergedRead = Array.from(
+        new Set([...(clerkState?.readIds || []), ...(localParsed.readIds || [])])
+      );
+      const mergedDismissed = Array.from(
+        new Set([...(clerkState?.dismissedIds || []), ...(localParsed.dismissedIds || [])])
+      );
+      const mergedMarkedAllReadAt = Math.max(
+        clerkState?.lastMarkedAllReadAt || 0,
+        localParsed.lastMarkedAllReadAt || 0
+      );
+
+      setReadIds(mergedRead);
+      setDismissedIds(mergedDismissed);
+      setLastMarkedAllReadAt(mergedMarkedAllReadAt);
 
       const savedPasses = localStorage.getItem("cj_registered_event_ids");
       if (savedPasses) setRegisteredEventIds(JSON.parse(savedPasses));
@@ -81,7 +131,41 @@ export function NotificationCenter({
       // ignore
     }
     setMounted(true);
-  }, []);
+  }, [user?.id, storageKey]);
+
+  // Helper to persist state to both localStorage and Clerk Cloud User profile
+  const persistState = (
+    nextRead: string[],
+    nextDismissed: string[],
+    nextMarkedAllReadAt: number
+  ) => {
+    const payload = {
+      readIds: nextRead,
+      dismissedIds: nextDismissed,
+      lastMarkedAllReadAt: nextMarkedAllReadAt,
+    };
+
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(payload));
+      localStorage.setItem("cj_notif_read_ids_v1", JSON.stringify(nextRead));
+      localStorage.setItem("cj_notif_dismissed_ids_v1", JSON.stringify(nextDismissed));
+    } catch {
+      // ignore
+    }
+
+    if (user?.update) {
+      user
+        .update({
+          unsafeMetadata: {
+            ...user.unsafeMetadata,
+            notificationState: payload,
+          },
+        })
+        .catch(() => {
+          // non-blocking if offline
+        });
+    }
+  };
 
   // Close dropdown when clicked outside
   useEffect(() => {
@@ -98,80 +182,85 @@ export function NotificationCenter({
     };
   }, [isOpen]);
 
-  // Persist read IDs
+  // Mark single notification as read
   const markAsRead = (id: string) => {
     if (!readIds.includes(id)) {
       const updated = [...readIds, id];
       setReadIds(updated);
-      try {
-        localStorage.setItem("cj_notif_read_ids_v1", JSON.stringify(updated));
-      } catch {
-        // ignore
-      }
+      persistState(updated, dismissedIds, lastMarkedAllReadAt);
     }
   };
 
+  // Mark all active notifications as read
   const markAllAsRead = (allCurrentIds: string[]) => {
+    const now = Date.now();
     const updated = Array.from(new Set([...readIds, ...allCurrentIds]));
     setReadIds(updated);
-    try {
-      localStorage.setItem("cj_notif_read_ids_v1", JSON.stringify(updated));
-    } catch {
-      // ignore
-    }
+    setLastMarkedAllReadAt(now);
+    persistState(updated, dismissedIds, now);
   };
 
+  // Dismiss notification
   const dismissNotification = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const updated = [...dismissedIds, id];
-    setDismissedIds(updated);
-    try {
-      localStorage.setItem("cj_notif_dismissed_ids_v1", JSON.stringify(updated));
-    } catch {
-      // ignore
-    }
+    const updatedDismissed = Array.from(new Set([...dismissedIds, id]));
+    const updatedRead = Array.from(new Set([...readIds, id]));
+    setDismissedIds(updatedDismissed);
+    setReadIds(updatedRead);
+    persistState(updatedRead, updatedDismissed, lastMarkedAllReadAt);
   };
 
+  // Clear all notifications
   const clearAll = (allCurrentIds: string[]) => {
-    const updated = Array.from(new Set([...dismissedIds, ...allCurrentIds]));
-    setDismissedIds(updated);
-    try {
-      localStorage.setItem("cj_notif_dismissed_ids_v1", JSON.stringify(updated));
-    } catch {
-      // ignore
+    const now = Date.now();
+    const updatedDismissed = Array.from(new Set([...dismissedIds, ...allCurrentIds]));
+    const updatedRead = Array.from(new Set([...readIds, ...allCurrentIds]));
+    setDismissedIds(updatedDismissed);
+    setReadIds(updatedRead);
+    setLastMarkedAllReadAt(now);
+    persistState(updatedRead, updatedDismissed, now);
+  };
+
+  // Check if item is read
+  const isNotificationRead = (id: string, itemTimestamp?: number) => {
+    if (readIds.includes(id)) return true;
+    if (lastMarkedAllReadAt && itemTimestamp && itemTimestamp <= lastMarkedAllReadAt) {
+      return true;
     }
+    return false;
   };
 
   // ── Construct Real Notifications from Live Data ──
   const allNotifications: DashboardNotification[] = useMemo(() => {
     const list: DashboardNotification[] = [];
 
-    // 1. Real Sanity Events
-    events.slice(0, 3).forEach((event) => {
-      const eventDate = event.date ? new Date(event.date) : null;
-      const isUpcoming = eventDate && eventDate >= new Date();
-      const formattedDate = eventDate
-        ? eventDate.toLocaleDateString("en-IN", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-          })
-        : "Announced";
+    // 1. Real Upcoming Sanity Events (Only upcoming events belong in the live notification stream)
+    const upcomingEvents = events.filter((e) => e.date && new Date(e.date) >= new Date());
+    upcomingEvents.slice(0, 3).forEach((event) => {
+      const eventDate = new Date(event.date!);
+      const formattedDate = eventDate.toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
 
       const cleanDesc = event.description
         ? event.description.replace(/\n+/g, " ").trim().slice(0, 130) + (event.description.length > 130 ? "..." : "")
         : `Location: ${event.location || "Coding Junction Campus"}`;
 
+      const notifId = `event-${event._id}`;
+      const notifTime = eventDate.getTime();
+
       list.push({
-        id: `event-${event._id}`,
-        title: isUpcoming ? `Upcoming: ${event.title}` : `Event Archive: ${event.title}`,
+        id: notifId,
+        title: `Upcoming: ${event.title}`,
         message: cleanDesc,
         time: formattedDate,
-        timestamp: eventDate ? eventDate.getTime() : Date.now(),
+        timestamp: notifTime,
         category: "event",
-        read: readIds.includes(`event-${event._id}`),
+        read: isNotificationRead(notifId, notifTime),
         actionTab: "events",
-        actionLabel: isUpcoming ? "View Details" : "View Archive",
+        actionLabel: "View Details",
       });
     });
 
@@ -180,14 +269,17 @@ export function NotificationCenter({
       const registeredEvent = events.find((e) => registeredEventIds.includes(e._id));
       if (registeredEvent) {
         const passId = `pass-${registeredEvent._id}`;
+        const passTime = registeredEvent.date
+          ? new Date(registeredEvent.date).getTime() - 24 * 60 * 60 * 1000
+          : 1730000000000;
         list.push({
           id: passId,
           title: `🎟️ Entry Pass Confirmed: ${registeredEvent.title}`,
           message: `Your dynamic check-in QR pass is issued and ready. Bring your mobile pass to ${registeredEvent.location || "the venue"}.`,
           time: "Pass Ready",
-          timestamp: Date.now() - 30 * 60 * 1000,
+          timestamp: passTime,
           category: "pass",
-          read: readIds.includes(passId),
+          read: isNotificationRead(passId, passTime),
           actionTab: "passes",
           actionLabel: "Show QR Pass",
         });
@@ -197,6 +289,9 @@ export function NotificationCenter({
     // 3. Real College Verification Notice
     if (verificationData?.isVerified) {
       const verId = "college-verified";
+      const verTime = verificationData.verifiedAt
+        ? new Date(verificationData.verifiedAt).getTime()
+        : 1730000000000;
       list.push({
         id: verId,
         title: `🛡️ Verified Student: ${verificationData.collegeName}`,
@@ -207,22 +302,25 @@ export function NotificationCenter({
               month: "short",
             })
           : "Verified",
-        timestamp: verificationData.verifiedAt ? new Date(verificationData.verifiedAt).getTime() : Date.now(),
+        timestamp: verTime,
         category: "security",
-        read: readIds.includes(verId),
+        read: isNotificationRead(verId, verTime),
         actionTab: "profile",
         actionLabel: "View Membership Card",
       });
     } else {
       const unverifiedId = "college-unverified";
+      const unverifiedTime = user?.createdAt
+        ? new Date(user.createdAt).getTime()
+        : 1730000000000;
       list.push({
         id: unverifiedId,
         title: `⚠️ Complete College ID Verification`,
         message: `Verify your college identification to receive your official annual Coding Junction membership card and access members-only hackathons.`,
         time: "Action Required",
-        timestamp: Date.now(),
+        timestamp: unverifiedTime,
         category: "security",
-        read: readIds.includes(unverifiedId),
+        read: isNotificationRead(unverifiedId, unverifiedTime),
         actionTab: "open-verification-modal",
         actionLabel: "Verify College ID",
         onAction: onOpenVerification,
@@ -239,15 +337,18 @@ export function NotificationCenter({
             year: "numeric",
           })
         : "Recently";
+      const welcomeTime = user.createdAt
+        ? new Date(user.createdAt).getTime()
+        : 1730000000000;
 
       list.push({
         id: welcomeId,
         title: `Welcome to Coding Junction, ${user.firstName || user.fullName || "Member"}!`,
         message: `Connected with ${user.primaryEmailAddress?.emailAddress || "your account"}. Access event passes, learning roadmaps, and community announcements.`,
         time: joinedDate,
-        timestamp: user.createdAt ? new Date(user.createdAt).getTime() : Date.now(),
+        timestamp: welcomeTime,
         category: "announcement",
-        read: readIds.includes(welcomeId),
+        read: isNotificationRead(welcomeId, welcomeTime),
         actionTab: "overview",
         actionLabel: "Explore Dashboard",
       });
@@ -255,20 +356,21 @@ export function NotificationCenter({
 
     // 5. Interactive Roadmaps Feature Notice
     const roadmapId = "roadmaps-available";
+    const roadmapTime = 1738000000000; // Fixed launch timestamp
     list.push({
       id: roadmapId,
       title: `📚 Interactive Learning Roadmaps`,
       message: `Track your progress with checklists for Full-Stack Web Dev, DSA, AI/ML, and DevOps in the Resources tab. Save bookmarks with personal notes.`,
       time: "Available",
-      timestamp: Date.now() - 120 * 60 * 1000,
+      timestamp: roadmapTime,
       category: "community",
-      read: readIds.includes(roadmapId),
+      read: isNotificationRead(roadmapId, roadmapTime),
       actionTab: "resources",
       actionLabel: "Explore Roadmaps",
     });
 
     return list;
-  }, [events, user, verificationData, registeredEventIds, readIds, onOpenVerification]);
+  }, [events, user, verificationData, registeredEventIds, readIds, lastMarkedAllReadAt, onOpenVerification]);
 
   // Filter out dismissed notifications
   const activeNotifications = useMemo(() => {

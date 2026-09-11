@@ -47,7 +47,7 @@ interface EventPassesTabProps {
 export const EventPassesTab: React.FC<EventPassesTabProps> = ({
   user,
   upcomingEvents,
-  pastEvents,
+  pastEvents: _pastEvents,
   eventsLoading,
   onBrowseEvents,
 }) => {
@@ -100,6 +100,9 @@ export const EventPassesTab: React.FC<EventPassesTabProps> = ({
   const myRegisteredUpcomingEvents = useMemo(() => {
     return upcomingEvents.filter((e) => registeredEventIds.includes(e._id));
   }, [upcomingEvents, registeredEventIds]);
+
+  // Verified attended events (empty state until on-site QR scanner check-in backend is active)
+  const attendedEvents: SanityEvent[] = useMemo(() => [], []);
 
   // Generate Google Calendar Link
   const getGoogleCalendarUrl = (event: SanityEvent) => {
@@ -265,7 +268,7 @@ export const EventPassesTab: React.FC<EventPassesTabProps> = ({
           }`}
         >
           <History className="w-3.5 h-3.5" />
-          <span>Attendance History ({pastEvents.length})</span>
+          <span>Attendance History ({attendedEvents.length})</span>
         </button>
       </div>
 
@@ -339,48 +342,66 @@ export const EventPassesTab: React.FC<EventPassesTabProps> = ({
       {/* ─── TAB 3: ATTENDANCE HISTORY ─── */}
       {activeSubTab === "history" && (
         <div className="space-y-4">
-          <div className="rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0c0d14] p-5">
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-black/[0.06] dark:border-white/[0.06]">
-              <div className="flex items-center gap-2">
-                <History className="w-4 h-4 text-emerald-500" />
-                <h4 className="font-bold text-sm text-foreground dark:text-white">
-                  Verified Attendance Record
-                </h4>
+          {attendedEvents.length === 0 ? (
+            <div className="text-center py-16 rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0c0d14] p-8">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center mx-auto mb-3 text-emerald-500">
+                <History className="w-6 h-6" />
               </div>
-              <span className="text-[10px] font-mono text-muted-foreground uppercase">
-                {pastEvents.length} Sessions Logged
-              </span>
+              <h4 className="font-bold text-foreground dark:text-white text-base">
+                No Attended Sessions on Record
+              </h4>
+              <p className="text-xs text-muted-foreground mt-1.5 max-w-md mx-auto leading-relaxed">
+                No attended sessions on record yet. Scan your QR pass at our next event to log attendance.
+              </p>
+              <div className="mt-5 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.08] text-[11px] font-mono text-muted-foreground">
+                <QrCode className="w-3.5 h-3.5 text-indigo-400" />
+                <span>QR scanner check-in active at upcoming offline sessions</span>
+              </div>
             </div>
-
-            <div className="divide-y divide-black/[0.04] dark:divide-white/[0.04]">
-              {pastEvents.map((event) => (
-                <div key={event._id} className="py-3 flex items-center justify-between gap-4">
-                  <div className="min-w-0">
-                    <p className="font-bold text-xs text-foreground dark:text-white truncate">
-                      {event.title}
-                    </p>
-                    <div className="flex items-center gap-3 text-[11px] text-muted-foreground font-mono mt-0.5">
-                      <span>
-                        {event.date
-                          ? new Date(event.date).toLocaleDateString("en-IN", {
-                              day: "numeric",
-                              month: "short",
-                              year: "numeric",
-                            })
-                          : "Past Event"}
-                      </span>
-                      {event.location && <span>• {event.location}</span>}
-                    </div>
-                  </div>
-
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex-shrink-0">
-                    <CheckCircle2 className="w-3 h-3" />
-                    <span>Attended</span>
-                  </span>
+          ) : (
+            <div className="rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0c0d14] p-5">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-black/[0.06] dark:border-white/[0.06]">
+                <div className="flex items-center gap-2">
+                  <History className="w-4 h-4 text-emerald-500" />
+                  <h4 className="font-bold text-sm text-foreground dark:text-white">
+                    Verified Attendance Record
+                  </h4>
                 </div>
-              ))}
+                <span className="text-[10px] font-mono text-muted-foreground uppercase">
+                  {attendedEvents.length} {attendedEvents.length === 1 ? "Session" : "Sessions"} Logged
+                </span>
+              </div>
+
+              <div className="divide-y divide-black/[0.04] dark:divide-white/[0.04]">
+                {attendedEvents.map((event) => (
+                  <div key={event._id} className="py-3 flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="font-bold text-xs text-foreground dark:text-white truncate">
+                        {event.title}
+                      </p>
+                      <div className="flex items-center gap-3 text-[11px] text-muted-foreground font-mono mt-0.5">
+                        <span>
+                          {event.date
+                            ? new Date(event.date).toLocaleDateString("en-IN", {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              })
+                            : "Past Event"}
+                        </span>
+                        {event.location && <span>• {event.location}</span>}
+                      </div>
+                    </div>
+
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex-shrink-0">
+                      <CheckCircle2 className="w-3 h-3" />
+                      <span>Attended</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 
