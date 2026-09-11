@@ -28,7 +28,7 @@ const Event = () => {
   useEffect(() => {
     sanity
       .fetch(
-        `*[_type in ["event", "post"]] | order(date desc) {
+        `*[_type in ["event", "post"]] | order(date asc) {
           _id,
           title,
           date,
@@ -40,8 +40,19 @@ const Event = () => {
           registerLink
         }`
       )
-      .then((data) => {
-        setEvents(data);
+      .then((data: EventType[]) => {
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+
+        const futureEvents = (data || [])
+          .filter((event) => {
+            if (!event.date) return false;
+            const eventDate = new Date(event.date);
+            return !isNaN(eventDate.getTime()) && eventDate >= startOfToday;
+          })
+          .sort((a, b) => new Date(a.date!).getTime() - new Date(b.date!).getTime());
+
+        setEvents(futureEvents);
         setLoading(false);
       })
       .catch((error) => {
