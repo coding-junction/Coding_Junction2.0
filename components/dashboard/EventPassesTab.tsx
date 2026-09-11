@@ -101,8 +101,23 @@ export const EventPassesTab: React.FC<EventPassesTabProps> = ({
     return upcomingEvents.filter((e) => registeredEventIds.includes(e._id));
   }, [upcomingEvents, registeredEventIds]);
 
-  // Verified attended events (empty state until on-site QR scanner check-in backend is active)
-  const attendedEvents: SanityEvent[] = useMemo(() => [], []);
+  // Verified attended events synchronized from Clerk and local storage
+  const attendedEventIds = useMemo(() => {
+    try {
+      const fromClerk = (user?.unsafeMetadata?.attendedEventIds as string[]) || [];
+      const local = typeof window !== "undefined"
+        ? JSON.parse(localStorage.getItem(`cj_attended_event_ids_${user?.id || "guest"}`) || "[]")
+        : [];
+      return Array.from(new Set([...fromClerk, ...local]));
+    } catch {
+      return [];
+    }
+  }, [user?.id, user?.unsafeMetadata?.attendedEventIds]);
+
+  const allEvents = useMemo(() => [...upcomingEvents, ..._pastEvents], [upcomingEvents, _pastEvents]);
+  const attendedEvents: SanityEvent[] = useMemo(() => {
+    return allEvents.filter((e) => attendedEventIds.includes(e._id));
+  }, [allEvents, attendedEventIds]);
 
   // Generate Google Calendar Link
   const getGoogleCalendarUrl = (event: SanityEvent) => {

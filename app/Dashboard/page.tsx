@@ -32,6 +32,7 @@ interface SanityEvent {
   registerLink?: string;
   images?: { asset?: { _id?: string; url: string } }[];
   image?: { asset?: { url: string } };
+  certificateTemplate?: { asset?: { url: string } };
 }
 
 /* ─── Dashboard Tabs ─── */
@@ -192,7 +193,8 @@ const DashboardMain = () => {
         `*[_type in ["event", "post"]] | order(date desc) {
           _id, title, date, location, description, registerLink,
           images[]{ asset->{ _id, url } },
-          image{ asset->{ url } }
+          image{ asset->{ url } },
+          certificateTemplate{ asset->{ url } }
         }`
       )
       .then((data: SanityEvent[]) => {
@@ -345,7 +347,15 @@ const DashboardMain = () => {
                 totalEvents={events.length}
               />
             )}
-            {activeTab === "certificates" && <CertificatesTab key="certificates" user={user} onBrowseEvents={() => setActiveTab("events")} />}
+            {activeTab === "certificates" && (
+              <CertificatesTab
+                key="certificates"
+                user={user}
+                verificationData={verificationData}
+                events={events}
+                onBrowseEvents={() => setActiveTab("events")}
+              />
+            )}
             {activeTab === "profile" && (
               <ProfileTab
                 key="profile"
