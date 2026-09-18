@@ -14,11 +14,25 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const isTest = searchParams.get("test") === "true";
   const broadcastLatest = searchParams.get("broadcastLatest") === "true";
-  const testRecipient = searchParams.get("to") || process.env.SMTP_USER;
+  const webhookSecret = process.env.SANITY_WEBHOOK_SECRET;
+  const incomingSecret =
+    req.headers.get("sanity-webhook-secret") ||
+    req.headers.get("authorization")?.replace("Bearer ", "") ||
+    searchParams.get("secret");
 
+  // Protect test and broadcast actions
+  if (isTest || broadcastLatest) {
+    if (!webhookSecret || incomingSecret !== webhookSecret) {
+      return NextResponse.json(
+        { error: "Unauthorized: Missing or invalid secret for broadcast action." },
+        { status: 401 }
+      );
+    }
+  }
+
+  const testRecipient = searchParams.get("to") || process.env.SMTP_USER;
   const smtpCheck = await verifySmtpConnection();
 
-  // Test mode: Send dummy test email
   if (isTest && testRecipient) {
     if (!smtpCheck.ok) {
       return NextResponse.json(
@@ -147,18 +161,23 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
-    // 1. Optional Secret Authentication
+    // 1. Mandatory Secret Authentication
     const webhookSecret = process.env.SANITY_WEBHOOK_SECRET;
-    if (webhookSecret) {
-      const incomingSecret =
-        req.headers.get("sanity-webhook-secret") ||
-        req.headers.get("authorization")?.replace("Bearer ", "");
-      if (incomingSecret !== webhookSecret) {
-        return NextResponse.json(
-          { error: "Unauthorized: Invalid or missing webhook secret" },
-          { status: 401 }
-        );
-      }
+    if (!webhookSecret) {
+      return NextResponse.json(
+        { error: "Server misconfiguration: SANITY_WEBHOOK_SECRET is not configured." },
+        { status: 500 }
+      );
+    }
+
+    const incomingSecret =
+      req.headers.get("sanity-webhook-secret") ||
+      req.headers.get("authorization")?.replace("Bearer ", "");
+    if (incomingSecret !== webhookSecret) {
+      return NextResponse.json(
+        { error: "Unauthorized: Invalid or missing webhook secret" },
+        { status: 401 }
+      );
     }
 
     // 2. Parse Incoming Payload

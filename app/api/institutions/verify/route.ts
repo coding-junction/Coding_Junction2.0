@@ -321,7 +321,24 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { rawText = "", state: manualState, query: manualQuery, userName = "" } = body;
 
-    const normalizedText = String(rawText).toLowerCase();
+    const normalizedText = String(rawText).toLowerCase().trim();
+
+    // 0. Validate minimum readable text
+    if (!normalizedText || normalizedText.length < 15) {
+      return NextResponse.json({
+        success: false,
+        message: "No clear text detected on the image. Please upload a high-resolution photo of your student ID card.",
+        detectedState: "",
+        bestMatch: null,
+        candidates: [],
+        nameMatch: {
+          matched: false,
+          matchedName: null,
+          confidence: 0,
+          message: "No readable student name found on image.",
+        },
+      });
+    }
 
     // 1. Perform student name verification against account name
     const nameMatch = matchUserName(rawText, userName);
@@ -340,28 +357,24 @@ export async function POST(request: NextRequest) {
     // 3. Check city to state if state still not found
     if (!detectedState) {
       for (const [city, state] of Object.entries(CITY_TO_STATE)) {
-        if (normalizedText.includes(city)) {
+        const regex = new RegExp(`\\b${city}\\b`, "i");
+        if (regex.test(normalizedText)) {
           detectedState = state;
           break;
         }
       }
     }
 
-    // Default to West Bengal if Coding Junction context or undefined
-    if (!detectedState) {
-      detectedState = "West Bengal";
-    }
-
     // 4. Extract candidate queries from OCR text
     const lines: string[] = String(rawText)
       .split(/\r?\n/)
       .map(l => l.trim())
-      .filter(l => l.length > 4);
+      .filter(l => l.length > 5);
 
     const institutionKeywords = [
       "institute", "college", "university", "technology",
       "polytechnic", "vidyapith", "engineering", "academy",
-      "school of", "uit", "iit", "nit", "iiit"
+      "school of"
     ];
 
     const candidateQueries: string[] = [];
@@ -380,78 +393,63 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Also check for "University Institute of Technology" / "Burdwan"
-    if (normalizedText.includes("uit") || normalizedText.includes("burdwan") || normalizedText.includes("bardhaman")) {
-      candidateQueries.push("University Institute of Technology");
-      candidateQueries.push("Burdwan");
-    }
-
-    // Fallback search words if no specific lines matched
-    if (candidateQueries.length === 0) {
-      for (const word of ["Technology", "Engineering", "College", "Institute", "University"]) {
-        if (normalizedText.includes(word.toLowerCase())) {
-          candidateQueries.push(word);
-        }
-      }
-    }
-
-    // 5. Perform search queries
+    // 5. Perform search queries ONLY if valid candidate queries exist
     const candidateMap = new Map<string, InstitutionResult>();
 
-    for (const query of candidateQueries.slice(0, 4)) {
-      const cleanQ = query.replace(/[^a-zA-Z0-9 ]/g, " ").trim();
-      if (cleanQ.length < 3) continue;
+    if (candidateQueries.length > 0) {
+      for (const query of candidateQueries.slice(0, 4)) {
+        const cleanQ = query.replace(/[^a-zA-Z0-9 ]/g, " ").trim();
+        if (cleanQ.length < 3) continue;
 
-      // Search detected state
-      const found = await searchExternalApi(detectedState, cleanQ);
-      for (const item of found) {
-        if (!candidateMap.has(item.id)) {
-          candidateMap.set(item.id, item);
+        // Search detected state (if any)
+        if (detectedState) {
+          const found = await searchExternalApi(detectedState, cleanQ);
+          for (const item of found) {
+            if (!candidateMap.has(item.id)) {
+              candidateMap.set(item.id, item);
+            }
+          }
         }
-      }
 
-      // Also check fallback list
-      for (const fb of FALLBACK_INSTITUTIONS) {
-        if (
-          fb.name.toLowerCase().includes(cleanQ.toLowerCase()) ||
-          fb.university.toLowerCase().includes(cleanQ.toLowerCase())
-        ) {
-          if (!candidateMap.has(fb.id)) {
-            candidateMap.set(fb.id, fb);
+        // Search fallback list
+        for (const fb of FALLBACK_INSTITUTIONS) {
+          if (
+            fb.name.toLowerCase().includes(cleanQ.toLowerCase()) ||
+            fb.university.toLowerCase().includes(cleanQ.toLowerCase())
+          ) {
+            if (!candidateMap.has(fb.id)) {
+              candidateMap.set(fb.id, fb);
+            }
           }
         }
       }
     }
 
-    // If still empty, include all fallback institutions for the state
-    if (candidateMap.size === 0) {
-      for (const fb of FALLBACK_INSTITUTIONS) {
-        candidateMap.set(fb.id, fb);
-      }
-    }
-
     // 6. Score candidate matches against raw OCR text
-    const scoredResults: InstitutionResult[] = Array.from(candidateMap.values()).map(item => {
-      const nameScore = calculateSimilarity(item.name, rawText);
-      const uniScore = item.university ? calculateSimilarity(item.university, rawText) * 0.8 : 0;
-      const districtScore = normalizedText.includes(item.district.toLowerCase()) ? 0.3 : 0;
-      const totalScore = Math.min(1.0, Math.max(nameScore, uniScore) + districtScore);
+    const scoredResults: InstitutionResult[] = Array.from(candidateMap.values())
+      .map(item => {
+        const nameScore = calculateSimilarity(item.name, rawText);
+        const uniScore = item.university ? calculateSimilarity(item.university, rawText) * 0.7 : 0;
+        const districtScore = (detectedState && normalizedText.includes(item.district.toLowerCase())) ? 0.15 : 0;
+        const totalScore = Math.min(1.0, Math.max(nameScore, uniScore) + districtScore);
 
-      return {
-        ...item,
-        matchScore: Number(totalScore.toFixed(2)),
-      };
-    });
+        return {
+          ...item,
+          matchScore: Number(totalScore.toFixed(2)),
+        };
+      })
+      .filter(item => (item.matchScore || 0) >= 0.25);
 
     scoredResults.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
 
-    const bestMatch = scoredResults.length > 0 && (scoredResults[0].matchScore || 0) > 0.35
+    // High confidence threshold (>= 0.45): strictly null if no college truly matches
+    const bestMatch = (scoredResults.length > 0 && (scoredResults[0].matchScore || 0) >= 0.45)
       ? scoredResults[0]
-      : (scoredResults[0] || null);
+      : null;
 
     return NextResponse.json({
       success: true,
-      detectedState,
+      detectedState: detectedState || "Not detected",
       bestMatch,
       candidates: scoredResults.slice(0, 10),
       nameMatch,

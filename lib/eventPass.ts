@@ -1,4 +1,25 @@
 "use client";
+import QRCode from "qrcode";
+
+/**
+ * Generate a crisp, scannable QR Code Data URL for mobile venue scanning.
+ */
+export async function generateQrDataUrl(text: string): Promise<string> {
+  if (!text) return "";
+  try {
+    return await QRCode.toDataURL(text, {
+      margin: 1,
+      width: 280,
+      color: {
+        dark: "#000000",
+        light: "#ffffff",
+      },
+    });
+  } catch (err) {
+    console.warn("Notice generating QR code data URL:", err);
+    return "";
+  }
+}
 
 /**
  * Helper to register a user for an event and immediately generate their Event Pass.
@@ -7,14 +28,23 @@
 export function getRegisteredEventIds(user?: any): string[] {
   if (typeof window === "undefined" || !user || !user.id) return [];
   try {
+    // 1. Clean up legacy un-scoped global keys if present to prevent cross-account pollution
+    try {
+      localStorage.removeItem("cj_registered_event_ids_v2");
+      localStorage.removeItem("cj_registered_event_ids");
+    } catch {
+      // Ignore
+    }
+
+    // 2. Read strictly user-scoped registrations from Clerk metadata & user-keyed localStorage
     const fromClerk = (user?.unsafeMetadata?.registeredEventIds as string[]) || [];
     const userKey = `cj_registered_event_ids_${user.id}`;
-    const local = JSON.parse(
-      localStorage.getItem(userKey) ||
-      localStorage.getItem("cj_registered_event_ids_v2") ||
-      "[]"
+    const rawLocal = localStorage.getItem(userKey);
+    const local = rawLocal ? JSON.parse(rawLocal) : [];
+
+    return Array.from(
+      new Set([...(Array.isArray(local) ? local : []), ...fromClerk])
     );
-    return Array.from(new Set([...(Array.isArray(local) ? local : []), ...fromClerk]));
   } catch {
     return [];
   }
@@ -39,10 +69,11 @@ export async function registerForEvent(eventId: string, user?: any): Promise<str
   const current = getRegisteredEventIds(user);
   const next = Array.from(new Set([...current, eventId]));
 
-  // 1. Save to user-specific localStorage
+  // 1. Save strictly to user-specific localStorage
   try {
     localStorage.setItem(userKey, JSON.stringify(next));
-    localStorage.setItem("cj_registered_event_ids_v2", JSON.stringify(next));
+    localStorage.removeItem("cj_registered_event_ids_v2");
+    localStorage.removeItem("cj_registered_event_ids");
   } catch (err) {
     console.error("Failed to save registered event to localStorage:", err);
   }
@@ -70,6 +101,70 @@ export async function registerForEvent(eventId: string, user?: any): Promise<str
     );
   } catch {
     // Ignore in non-browser environments
+  }
+
+  return next;
+}
+
+export async function cancelEventRegistration(eventId: string, user?: any, eventTitle?: string): Promise<string[]> {
+  if (!eventId || typeof window === "undefined") return [];
+  if (!user || !user.id) return [];
+
+  const userKey = `cj_registered_event_ids_${user.id}`;
+  const current = getRegisteredEventIds(user);
+  const next = current.filter((id) => id !== eventId);
+  const ticketId = `CJ-EVT-${eventId.replace(/[^a-zA-Z0-9]/g, "").slice(-4).toUpperCase()}-${user.id.replace("user_", "").slice(-4).toUpperCase()}`;
+
+  // 1. Update localStorage
+  try {
+    localStorage.setItem(userKey, JSON.stringify(next));
+  } catch (err) {
+    console.error("Failed to update localStorage after cancellation:", err);
+  }
+
+  // 2. Update Clerk user metadata
+  if (user && typeof user.update === "function") {
+    try {
+      await user.update({
+        unsafeMetadata: {
+          ...(user.unsafeMetadata || {}),
+          registeredEventIds: next,
+        },
+      });
+    } catch (err) {
+      console.error("Failed to update Clerk metadata after cancellation:", err);
+    }
+  }
+
+  // 3. Mark cancelled in backend & external Sheets
+  try {
+    await fetch("/api/events/cancel-registration", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ eventId, eventTitle, ticketId }),
+    });
+  } catch (err) {
+    console.warn("Notice updating registration cancellation on backend:", err);
+  }
+
+  // Refresh client-side Clerk user state
+  if (user && typeof user.reload === "function") {
+    try {
+      await user.reload();
+    } catch {
+      // Ignore
+    }
+  }
+
+  // 4. Notify listeners across components
+  try {
+    window.dispatchEvent(
+      new CustomEvent("cj:event-cancelled", {
+        detail: { eventId, allIds: next },
+      })
+    );
+  } catch {
+    // Ignore
   }
 
   return next;
@@ -237,27 +332,45 @@ export async function downloadEventPassPng({
   ctx.font = "11px 'Courier New', monospace";
   ctx.fillText(`ID: ${ticketId}`, 740, 95);
 
-  // Barcode lines
-  const barWidths = [4, 2, 6, 1, 3, 5, 2, 4, 1, 3, 6, 2, 5, 1, 4, 3, 2, 6, 1, 4, 5, 2, 3, 1, 4, 6, 2, 5, 1, 3, 4, 2, 5, 3, 1, 4];
-  let curX = 740;
-  const barY = 130;
-  const barH = 150;
-  ctx.fillStyle = "#e2e8f0";
-  for (const w of barWidths) {
-    ctx.fillRect(curX, barY, w, barH);
-    curX += w + 2.5;
-    if (curX > 940) break;
+  // Scannable QR Code on Right Stub
+  try {
+    const qrDataUrl = await QRCode.toDataURL(ticketId, {
+      margin: 1,
+      width: 220,
+      color: {
+        dark: "#000000",
+        light: "#ffffff",
+      },
+    });
+    const qrImg = new Image();
+    qrImg.src = qrDataUrl;
+    await new Promise((resolve) => {
+      qrImg.onload = resolve;
+      qrImg.onerror = resolve;
+    });
+
+    // White rounded backdrop for crisp mobile camera scanning
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.rect(745, 125, 175, 175);
+    ctx.fill();
+    ctx.drawImage(qrImg, 750, 130, 165, 165);
+  } catch (qrErr) {
+    console.warn("Notice rendering QR code on pass canvas:", qrErr);
   }
 
-  // Barcode label
+  // QR Code Ticket ID label
+  ctx.fillStyle = "#818cf8";
+  ctx.font = "bold 13px 'Courier New', monospace";
+  ctx.fillText(ticketId, 745, 325);
+
   ctx.fillStyle = "#94a3b8";
-  ctx.font = "12px 'Courier New', monospace";
-  ctx.fillText(ticketId, 740, 310);
+  ctx.font = "10px sans-serif";
+  ctx.fillText("SCAN AT VENUE GATE (CODING JUNCTION APP)", 745, 345);
 
   ctx.fillStyle = "#64748b";
   ctx.font = "10px 'Courier New', monospace";
-  ctx.fillText("CODING JUNCTION COMMUNITY", 740, 380);
-  ctx.fillText("coding-junction.in", 740, 400);
+  ctx.fillText("CODING JUNCTION COMMUNITY · coding-junction.in", 745, 400);
 
   // Convert to Blob and Trigger Download
   canvas.toBlob((blob) => {

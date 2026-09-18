@@ -1,5 +1,19 @@
 import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import { EventEmailPayload, generateNewEventEmailHtml } from "./email-templates/newEventTemplate";
+import {
+  RegistrationEmailPayload,
+  generateRegistrationConfirmationEmailHtml,
+} from "./email-templates/registrationConfirmationTemplate";
+
+/**
+ * Returns an initialized Resend client if RESEND_API_KEY is configured
+ */
+export function getResendClient(): Resend | null {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return null;
+  return new Resend(apiKey);
+}
 
 /**
  * Creates and returns a Nodemailer transporter configured for Gmail SMTP
@@ -22,14 +36,37 @@ export function getMailerTransporter() {
 }
 
 /**
- * Verifies if the SMTP credentials are functional
+ * Helper to get the sender address depending on provider
+ */
+export function getSenderAddress(): string {
+  if (process.env.RESEND_API_KEY) {
+    return (
+      process.env.EMAIL_FROM ||
+      process.env.RESEND_FROM ||
+      "Coding Junction <onboarding@resend.dev>"
+    );
+  }
+  return process.env.SMTP_FROM || `"Coding Junction" <${process.env.SMTP_USER || "events@coding-junction.in"}>`;
+}
+
+/**
+ * Verifies if the email provider (Resend or SMTP) is functional
  */
 export async function verifySmtpConnection(): Promise<{ ok: boolean; message: string }> {
+  // Check Resend first
+  if (process.env.RESEND_API_KEY) {
+    if (process.env.RESEND_API_KEY.startsWith("re_")) {
+      return { ok: true, message: "Resend API key configured and ready." };
+    }
+    return { ok: false, message: "RESEND_API_KEY appears invalid (must start with re_)." };
+  }
+
+  // Fallback to Nodemailer SMTP
   const transporter = getMailerTransporter();
   if (!transporter) {
     return {
       ok: false,
-      message: "SMTP_USER or SMTP_PASS is missing in environment variables.",
+      message: "Neither RESEND_API_KEY nor (SMTP_USER / SMTP_PASS) is configured.",
     };
   }
 
@@ -57,13 +94,6 @@ export async function broadcastEventEmail({
   totalRecipients: number;
   errors: string[];
 }> {
-  const transporter = getMailerTransporter();
-  if (!transporter) {
-    throw new Error(
-      "Cannot send email: SMTP credentials (SMTP_USER / SMTP_PASS) are not configured."
-    );
-  }
-
   // Deduplicate and filter valid emails
   const validEmails = Array.from(
     new Set(
@@ -79,23 +109,61 @@ export async function broadcastEventEmail({
 
   const htmlContent = generateNewEventEmailHtml(event);
   const textContent = `New Event Announced: ${event.title}\nDate: ${event.date || "TBA"}\nLocation: ${event.location || "TBA"}\n\n${event.description || ""}\n\nRegister here: ${event.registerLink || "https://coding-junction.in/Events"}`;
-
-  const fromAddress = process.env.SMTP_FROM || `"Coding Junction" <${process.env.SMTP_USER}>`;
+  const fromAddress = getSenderAddress();
   const subject = `🚀 New Event: ${event.title} | Coding Junction`;
 
   let sentCount = 0;
   const errors: string[] = [];
 
-  // Gmail allows up to 500 recipients per day (or 2,000 for Google Workspace).
-  // Sending with BCC in chunks of 45 avoids revealing user emails to each other and optimizes delivery.
+  // Provider 1: Resend
+  const resend = getResendClient();
+  if (resend) {
+    const BATCH_SIZE = 50;
+    const fromClean = fromAddress.includes("<")
+      ? fromAddress.split("<")[1].replace(">", "").trim()
+      : fromAddress;
+
+    for (let i = 0; i < validEmails.length; i += BATCH_SIZE) {
+      const chunk = validEmails.slice(i, i + BATCH_SIZE);
+      try {
+        const { error } = await resend.emails.send({
+          from: fromAddress,
+          to: [fromClean],
+          bcc: chunk,
+          subject,
+          html: htmlContent,
+          text: textContent,
+        });
+
+        if (error) {
+          errors.push(`Resend Batch ${i / BATCH_SIZE + 1} failed: ${error.message}`);
+        } else {
+          sentCount += chunk.length;
+        }
+      } catch (err: any) {
+        errors.push(`Resend Batch ${i / BATCH_SIZE + 1} failed: ${err?.message || String(err)}`);
+      }
+    }
+
+    return { sentCount, totalRecipients: validEmails.length, errors };
+  }
+
+  // Provider 2: Nodemailer SMTP
+  const transporter = getMailerTransporter();
+  if (!transporter) {
+    throw new Error(
+      "Cannot send email: Neither RESEND_API_KEY nor SMTP credentials (SMTP_USER / SMTP_PASS) are configured."
+    );
+  }
+
   const BATCH_SIZE = 45;
   for (let i = 0; i < validEmails.length; i += BATCH_SIZE) {
     const chunk = validEmails.slice(i, i + BATCH_SIZE);
     try {
       await transporter.sendMail({
         from: fromAddress,
-        to: process.env.SMTP_USER, // Main 'to' recipient is club email
-        bcc: chunk, // Private broadcast to members
+        to: process.env.SMTP_USER,
+        bcc: chunk,
         subject,
         html: htmlContent,
         text: textContent,
@@ -112,4 +180,68 @@ export async function broadcastEventEmail({
     totalRecipients: validEmails.length,
     errors,
   };
+}
+
+/**
+ * Sends a personal registration confirmation email with Ticket ID and pass download instructions
+ */
+export async function sendRegistrationConfirmationEmail(
+  payload: RegistrationEmailPayload
+): Promise<{ success: boolean; error?: string }> {
+  const { recipientEmail, attendeeName, eventTitle, ticketId } = payload;
+  if (!recipientEmail || !recipientEmail.includes("@")) {
+    return { success: false, error: "Invalid recipient email address." };
+  }
+
+  const htmlContent = generateRegistrationConfirmationEmailHtml(payload);
+  const textContent = `Hi ${attendeeName},\n\nYour registration for ${eventTitle} has been confirmed!\nTicket ID: ${ticketId}\n\nTo download your Event Pass, visit your Coding Junction Dashboard: https://coding-junction.in/Dashboard\n\nCoding Junction Team`;
+  const fromAddress = getSenderAddress();
+  const subject = `🎟️ Registration Confirmed: ${eventTitle} | Ticket ID: ${ticketId}`;
+
+  // Provider 1: Resend
+  const resend = getResendClient();
+  if (resend) {
+    try {
+      const { error } = await resend.emails.send({
+        from: fromAddress,
+        to: recipientEmail,
+        subject,
+        html: htmlContent,
+        text: textContent,
+      });
+
+      if (error) {
+        console.error(`[Mailer:Resend] Failed to send registration email to ${recipientEmail}:`, error);
+        return { success: false, error: error.message };
+      }
+
+      console.log(`[Mailer:Resend] Registration email sent successfully to ${recipientEmail} (Ticket: ${ticketId})`);
+      return { success: true };
+    } catch (err: any) {
+      console.error(`[Mailer:Resend] Exception sending to ${recipientEmail}:`, err);
+      return { success: false, error: err?.message || String(err) };
+    }
+  }
+
+  // Provider 2: Nodemailer SMTP
+  const transporter = getMailerTransporter();
+  if (transporter) {
+    try {
+      await transporter.sendMail({
+        from: fromAddress,
+        to: recipientEmail,
+        subject,
+        html: htmlContent,
+        text: textContent,
+      });
+      console.log(`[Mailer:SMTP] Registration email sent successfully to ${recipientEmail} (Ticket: ${ticketId})`);
+      return { success: true };
+    } catch (err: any) {
+      console.error(`[Mailer:SMTP] Failed to send registration email to ${recipientEmail}:`, err);
+      return { success: false, error: err.message || String(err) };
+    }
+  }
+
+  console.warn("[Mailer] Neither RESEND_API_KEY nor SMTP credentials configured. Skipping confirmation email.");
+  return { success: false, error: "No email service configured (RESEND_API_KEY or SMTP_USER/SMTP_PASS)." };
 }

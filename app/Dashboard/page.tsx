@@ -9,7 +9,8 @@ import {
   CalendarDays, ArrowRight, ExternalLink, Sparkles, BookOpen,
   Users, MapPin, Bell, Bookmark, GraduationCap, Globe,
   Smartphone, ImageIcon, Clock, ChevronRight, Star, Zap, Award,
-  ShieldCheck, ShieldAlert, Building2, CheckCircle2, Ticket, Check, CalendarPlus
+  ShieldCheck, ShieldAlert, Building2, CheckCircle2, Ticket, Check, CalendarPlus,
+  Lock, Hash
 } from "lucide-react";
 import { SignedIn, UserButton, useUser } from "@clerk/nextjs";
 import { sanity } from "@/lib/sanity";
@@ -22,6 +23,8 @@ import { LeaderboardTab } from "@/components/dashboard/LeaderboardTab";
 import { ResourcesTab } from "@/components/dashboard/ResourcesTab";
 import { NotificationCenter } from "@/components/dashboard/NotificationCenter";
 import { registerForEvent, getRegisteredEventIds } from "@/lib/eventPass";
+import { EventRegistrationModal } from "@/components/events/EventRegistrationModal";
+import { AppPasswordModal } from "@/components/dashboard/AppPasswordModal";
 
 /* ─── Types ─── */
 interface SanityEvent {
@@ -47,12 +50,14 @@ const navTabs: {
   icon: React.ComponentType<{ className?: string }>;
   badge?: string;
 }[] = [
-  { key: "overview", label: "Overview", icon: LayoutDashboard },
-  { key: "events", label: "Events", icon: CalendarDays },
-  { key: "profile", label: "Profile", icon: UserCog },
-  { key: "resources", label: "Resources", icon: BookOpen },
-  { key: "settings", label: "Settings", icon: Settings },
-];
+    { key: "overview", label: "Overview", icon: LayoutDashboard },
+    { key: "events", label: "Events", icon: CalendarDays },
+    { key: "passes", label: "Event Passes", icon: Ticket },
+    { key: "certificates", label: "Certificates", icon: Award },
+    { key: "profile", label: "Profile", icon: UserCog },
+    { key: "resources", label: "Resources", icon: BookOpen },
+    { key: "settings", label: "Settings", icon: Settings },
+  ];
 
 /* ─── Isolated Sidebar Component (Prevents Main Dashboard Re-renders on Hover) ─── */
 function DashboardSidebarNav({
@@ -98,15 +103,13 @@ function DashboardSidebarNav({
                   setOpen(false);
                 }}
                 title={!open ? item.label : undefined}
-                className={`relative flex items-center rounded-xl transition-all duration-150 cursor-pointer ${
-                  open
-                    ? "w-full gap-3 px-3 py-2.5 text-sm"
-                    : "w-10 h-10 justify-center mx-auto"
-                } ${
-                  isActive
+                className={`relative flex items-center rounded-xl transition-all duration-150 cursor-pointer ${open
+                  ? "w-full gap-3 px-3 py-2.5 text-sm"
+                  : "w-10 h-10 justify-center mx-auto"
+                  } ${isActive
                     ? "bg-indigo-500/15 dark:bg-indigo-500/25 text-indigo-600 dark:text-indigo-400 font-semibold border border-indigo-500/30 shadow-sm"
                     : "text-muted-foreground hover:text-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
-                }`}
+                  }`}
               >
                 <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? (item.badge ? "text-amber-500" : "text-indigo-500 dark:text-indigo-400") : ""}`} />
                 {open && (
@@ -156,28 +159,88 @@ const DashboardMain = () => {
   const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false);
   const [verificationData, setVerificationData] = useState<VerifiedCollegeData | null>(null);
 
-  useEffect(() => {
-    if (isLoaded && user) {
-      const meta = user.unsafeMetadata?.collegeVerification as VerifiedCollegeData | undefined;
-      if (meta?.isVerified && meta?.verifiedAt) {
-        const verifiedTime = new Date(meta.verifiedAt).getTime();
-        const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
-        const isExpired = isNaN(verifiedTime) || (Date.now() - verifiedTime) >= ONE_YEAR_MS;
+  /* ─── Event Registration Modal State ─── */
+  const [registerModalEvent, setRegisterModalEvent] = useState<SanityEvent | null>(null);
 
-        if (isExpired) {
-          // 1 Year has elapsed: Annual verification expired, revoke pass & auto-trigger modal
-          setVerificationData(null);
-          setIsVerificationModalOpen(true);
-        } else {
-          setVerificationData(meta);
-        }
-      } else {
-        // Automatically prompt unverified students on login
-        setVerificationData(null);
-        setIsVerificationModalOpen(true);
-      }
+  /* ─── Supabase Mobile App Profile (25 Columns) ─── */
+  const [appUserProfile, setAppUserProfile] = useState<any>(null);
+  const [isSyncingProfile, setIsSyncingProfile] = useState(true);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn || !user) return;
+
+    let isMounted = true;
+    setIsSyncingProfile(true);
+
+    // Check if Clerk already has cached verification metadata
+    const cachedMeta = user.unsafeMetadata?.collegeVerification as VerifiedCollegeData | undefined;
+    if (cachedMeta?.isVerified && cachedMeta?.collegeName) {
+      setVerificationData(cachedMeta);
     }
-  }, [isLoaded, user]);
+
+    // Auto-sync account and fetch mobile app profile from 'public.user'
+    fetch("/api/user/sync-supabase", { method: "POST" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (!isMounted) return;
+        setIsSyncingProfile(false);
+
+        if (data?.success && data?.profile) {
+          const p = data.profile;
+          setAppUserProfile(p);
+
+          const college = (p.college_name || "").trim();
+          const dept = (p.department || "").trim();
+          const roll = (p.roll_no || "").trim();
+          const isVerifiedInDb = Boolean(p.is_verified || p.is_identity_verified || college);
+
+          if (isVerifiedInDb && college) {
+            const genuineAicteId =
+              cachedMeta?.aicteId && cachedMeta.aicteId !== roll && cachedMeta.aicteId !== "CJ-APP"
+                ? cachedMeta.aicteId
+                : "";
+            const genuineUniversity =
+              cachedMeta?.university &&
+                cachedMeta.university.trim().toLowerCase() !== dept.toLowerCase() &&
+                cachedMeta.university !== "Verified Member"
+                ? cachedMeta.university
+                : "";
+
+            const verifiedPayload: VerifiedCollegeData = {
+              isVerified: true,
+              collegeName: college,
+              university: genuineUniversity,
+              aicteId: genuineAicteId,
+              verifiedAt: cachedMeta?.verifiedAt || p.created_at || new Date().toISOString(),
+              studentName: p.full_name?.trim() || user.fullName || "",
+              district: cachedMeta?.district || "",
+              state: cachedMeta?.state || "West Bengal",
+            };
+            setVerificationData(verifiedPayload);
+            setIsVerificationModalOpen(false);
+
+            // Persist cleaned metadata into Clerk so bad caches are cleared
+            if (user?.update) {
+              user.update({
+                unsafeMetadata: {
+                  ...user.unsafeMetadata,
+                  collegeVerification: verifiedPayload,
+                },
+              }).catch(() => { });
+            }
+          }
+        }
+      })
+      .catch((err) => {
+        if (isMounted) setIsSyncingProfile(false);
+        console.warn("Notice syncing Supabase profile:", err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isLoaded, isSignedIn, user]);
 
   /* ─── Protect Dashboard Route ─── */
   useEffect(() => {
@@ -203,6 +266,35 @@ const DashboardMain = () => {
       })
       .catch(() => setEventsLoading(false));
   }, []);
+
+  /* ─── Handle URL Query Parameters (e.g. ?tab=events&registerEventId=xyz) ─── */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get("tab") as TabKey | null;
+      const registerEventId = params.get("registerEventId");
+
+      if (tabParam && navTabs.some((t) => t.key === tabParam)) {
+        setActiveTab(tabParam);
+      }
+
+      if (registerEventId && events.length > 0) {
+        const target = events.find((e) => e._id === registerEventId);
+        if (target) {
+          setRegisterModalEvent(target);
+          // If college verification is open, minimize overlap
+          setIsVerificationModalOpen(false);
+          // Clean the query param so closing modal doesn't re-trigger
+          const newUrl = new URL(window.location.href);
+          newUrl.searchParams.delete("registerEventId");
+          window.history.replaceState({}, "", newUrl.toString());
+        }
+      }
+    } catch {
+      // Ignore URL parsing errors
+    }
+  }, [events]);
 
   /* ─── Helpers (Memoized) ─── */
   const getGreeting = React.useCallback(() => {
@@ -236,9 +328,11 @@ const DashboardMain = () => {
     };
 
     window.addEventListener("cj:event-registered", handleSync);
+    window.addEventListener("cj:event-cancelled", handleSync);
     window.addEventListener("storage", handleSync);
     return () => {
       window.removeEventListener("cj:event-registered", handleSync);
+      window.removeEventListener("cj:event-cancelled", handleSync);
       window.removeEventListener("storage", handleSync);
     };
   }, [user, user?.unsafeMetadata?.registeredEventIds]);
@@ -258,15 +352,6 @@ const DashboardMain = () => {
           <div className="hidden sm:flex items-center gap-2 min-w-0 flex-shrink-0">
             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" />
             <span className="text-xs font-medium text-muted-foreground hidden sm:inline">Portal</span>
-            <span className="text-muted-foreground/40 text-xs hidden sm:inline">/</span>
-            <span className="text-xs font-bold text-foreground dark:text-white capitalize flex items-center gap-1.5">
-              {activeTab}
-              {(activeTab === "certificates" || activeTab === "passes" || activeTab === "leaderboard") && (
-                <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded-full bg-amber-500/15 text-amber-500 dark:text-amber-400 border border-amber-500/30">
-                  Soon
-                </span>
-              )}
-            </span>
           </div>
 
           {/* Centered Pill Nav (horizontally scrollable on mobile) */}
@@ -278,11 +363,10 @@ const DashboardMain = () => {
                 <button
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key)}
-                  className={`relative px-2.5 sm:px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 flex items-center gap-1.5 cursor-pointer whitespace-nowrap flex-shrink-0 ${
-                    isActive
-                      ? "text-indigo-600 dark:text-white font-semibold"
-                      : "text-muted-foreground hover:text-foreground hover:bg-black/[0.02] dark:hover:bg-white/[0.02]"
-                  }`}
+                  className={`relative px-2.5 sm:px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 flex items-center gap-1.5 cursor-pointer whitespace-nowrap flex-shrink-0 ${isActive
+                    ? "text-indigo-600 dark:text-white font-semibold"
+                    : "text-muted-foreground hover:text-foreground hover:bg-black/[0.02] dark:hover:bg-white/[0.02]"
+                    }`}
                 >
                   {isActive && (
                     <motion.div
@@ -345,9 +429,14 @@ const DashboardMain = () => {
                 eventsLoading={eventsLoading}
                 totalEvents={events.length}
                 verificationData={verificationData}
+                appUserProfile={appUserProfile}
                 registeredEventIds={registeredEventIds}
                 onGoToPasses={() => setActiveTab("passes")}
+                onGoToCertificates={() => setActiveTab("certificates")}
                 onOpenVerification={() => setIsVerificationModalOpen(true)}
+                onOpenPasswordModal={() => setIsPasswordModalOpen(true)}
+                onNavigateTab={(tab) => setActiveTab(tab)}
+                onRegisterEvent={(event: SanityEvent) => setRegisterModalEvent(event)}
               />
             )}
             {activeTab === "events" && (
@@ -359,6 +448,7 @@ const DashboardMain = () => {
                 eventsLoading={eventsLoading}
                 registeredEventIds={registeredEventIds}
                 onGoToPasses={() => setActiveTab("passes")}
+                onRegisterEvent={(event: SanityEvent) => setRegisterModalEvent(event)}
               />
             )}
             {activeTab === "passes" && (
@@ -397,11 +487,20 @@ const DashboardMain = () => {
                 isLoaded={isLoaded}
                 memberSince={memberSince}
                 verificationData={verificationData}
+                appUserProfile={appUserProfile}
                 onOpenVerification={() => setIsVerificationModalOpen(true)}
+                onOpenPasswordModal={() => setIsPasswordModalOpen(true)}
               />
             )}
             {activeTab === "resources" && <ResourcesTab key="resources" />}
-            {activeTab === "settings" && <SettingsTab key="settings" />}
+            {activeTab === "settings" && (
+              <SettingsTab
+                key="settings"
+                user={user}
+                appUserProfile={appUserProfile}
+                onOpenPasswordModal={() => setIsPasswordModalOpen(true)}
+              />
+            )}
           </AnimatePresence>
         </div>
       </div>
@@ -409,10 +508,49 @@ const DashboardMain = () => {
       {/* College ID Verification Modal */}
       <CollegeVerificationModal
         isOpen={isVerificationModalOpen}
-        onClose={() => setIsVerificationModalOpen(false)}
+        onClose={() => {
+          setIsVerificationModalOpen(false);
+          if (typeof window !== "undefined") {
+            sessionStorage.setItem("cj_verification_dismissed", "1");
+          }
+        }}
         user={user}
         onVerified={(data) => {
           setVerificationData(data);
+          // Also refresh local appUserProfile
+          fetch("/api/user/sync-supabase", { method: "POST" })
+            .then((r) => r.json())
+            .then((d) => {
+              if (d?.profile) setAppUserProfile(d.profile);
+            })
+            .catch(() => { });
+        }}
+      />
+
+      {/* In-Website Event Registration Modal */}
+      <EventRegistrationModal
+        isOpen={Boolean(registerModalEvent)}
+        onClose={() => setRegisterModalEvent(null)}
+        event={registerModalEvent as any}
+        onSuccess={() => {
+          if (registerModalEvent) {
+            setRegisteredEventIds((prev) => Array.from(new Set([...prev, registerModalEvent._id])));
+          }
+        }}
+      />
+
+      {/* Mobile App Password Sync Modal */}
+      <AppPasswordModal
+        isOpen={isPasswordModalOpen}
+        onClose={() => setIsPasswordModalOpen(false)}
+        email={user?.primaryEmailAddress?.emailAddress || appUserProfile?.email || ""}
+        onSuccess={() => {
+          fetch("/api/user/sync-supabase", { method: "POST" })
+            .then((r) => r.json())
+            .then((d) => {
+              if (d?.profile) setAppUserProfile(d.profile);
+            })
+            .catch(() => { });
         }}
       />
     </div>
@@ -425,16 +563,21 @@ const DashboardMain = () => {
 const OverviewTab = React.memo(function OverviewTab({
   user, isLoaded, getGreeting, memberSince,
   upcomingEvents, pastEvents, eventsLoading, totalEvents,
-  verificationData, registeredEventIds = [], onGoToPasses, onOpenVerification,
+  verificationData, appUserProfile, registeredEventIds = [], onGoToPasses, onGoToCertificates, onOpenVerification,
+  onOpenPasswordModal, onNavigateTab, onRegisterEvent,
 }: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  user: any; isLoaded: boolean; getGreeting: () => string; memberSince: string;
-  upcomingEvents: SanityEvent[]; pastEvents: SanityEvent[]; eventsLoading: boolean;
-  totalEvents: number;
+  user?: any; isLoaded: boolean; getGreeting: () => string; memberSince: string;
+  upcomingEvents: SanityEvent[]; pastEvents: SanityEvent[]; eventsLoading: boolean; totalEvents: number;
   verificationData?: VerifiedCollegeData | null;
+  appUserProfile?: any;
   registeredEventIds?: string[];
   onGoToPasses?: () => void;
+  onGoToCertificates?: () => void;
   onOpenVerification?: () => void;
+  onOpenPasswordModal?: () => void;
+  onNavigateTab?: (tab: TabKey) => void;
+  onRegisterEvent?: (event: SanityEvent) => void;
 }) {
   const quickStats = [
     { icon: Calendar, label: "Total Events", value: String(totalEvents), gradient: "from-blue-500 to-cyan-400", glowColor: "rgba(59,130,246,0.1)" },
@@ -455,12 +598,13 @@ const OverviewTab = React.memo(function OverviewTab({
 
   const quickActions: QuickActionItem[] = [
     { icon: CalendarDays, label: "Browse Events", href: "/Events", gradient: "from-blue-500 to-indigo-500", description: "Explore past and upcoming events" },
+    ...(onGoToPasses ? [{ icon: Ticket, label: "Event Passes", onClick: onGoToPasses, gradient: "from-indigo-500 to-violet-500", description: "Admission tickets & QR passes" }] : []),
+    ...(onGoToCertificates ? [{ icon: Award, label: "Certificates", onClick: onGoToCertificates, gradient: "from-amber-500 to-orange-500", description: "Earned event credentials & vault" }] : []),
     { icon: Users, label: "Meet the Team", href: "/Team", gradient: "from-emerald-500 to-teal-500", description: "Connect with club members" },
-    { icon: ImageIcon, label: "View Gallery", href: "/Gallery", gradient: "from-amber-500 to-orange-500", description: "Photos from our events" },
-    { icon: Smartphone, label: "Get the App", href: "/mobile-app", gradient: "from-violet-500 to-purple-500", description: "Download our mobile app" },
   ];
 
   const displayedOverviewEvents = upcomingEvents.length > 0 ? upcomingEvents : pastEvents;
+  const verifiedCollege = (verificationData?.collegeName || appUserProfile?.college_name || "").trim();
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
@@ -483,15 +627,13 @@ const OverviewTab = React.memo(function OverviewTab({
                 <span className="text-xs font-semibold uppercase tracking-wider text-indigo-500 dark:text-indigo-400">
                   {getGreeting()}{user?.firstName ? `, ${user.firstName}` : ""} 👋
                 </span>
-                {verificationData?.isVerified ? (
+                {verifiedCollege ? (
                   <span
-                    title={verificationData.collegeName}
+                    title={verifiedCollege}
                     className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1"
                   >
                     <ShieldCheck className="w-3 h-3 text-emerald-500" />
-                    {verificationData.collegeName.length > 24
-                      ? `${verificationData.collegeName.slice(0, 22)}...`
-                      : verificationData.collegeName}
+                    {verifiedCollege.length > 24 ? `${verifiedCollege.slice(0, 22)}...` : verifiedCollege}
                   </span>
                 ) : (
                   <button
@@ -520,6 +662,92 @@ const OverviewTab = React.memo(function OverviewTab({
           </div>
         </div>
       </div>
+
+      {/* ─── Mobile App Academic Credentials Card (Synced with Supabase) ─── */}
+      {/* {appUserProfile && (
+        <div className="rounded-2xl border border-indigo-500/25 bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-transparent dark:from-indigo-500/15 dark:via-purple-500/10 dark:to-transparent p-5 sm:p-6 mb-6 shadow-md backdrop-blur-xl relative overflow-hidden">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-black/[0.06] dark:border-white/[0.08]">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-500 dark:text-indigo-400 shadow-sm flex-shrink-0">
+                <Smartphone className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-sm sm:text-base text-foreground dark:text-white">
+                    Coding Junction Mobile App Profile
+                  </h3>
+                  <span className="text-[10px] uppercase font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" />
+                    Synced
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Connected via {appUserProfile.email} • Database record active
+                </p>
+              </div>
+            </div>
+
+            {appUserProfile && !appUserProfile.hashed_password && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={onOpenPasswordModal}
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-500/10 hover:bg-indigo-500/20 dark:bg-indigo-500/20 dark:hover:bg-indigo-500/30 text-indigo-600 dark:text-indigo-400 border border-indigo-500/25 transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>Set App Password</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 pt-4">
+            <div className="p-3 rounded-xl bg-black/[0.02] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06]">
+              <span className="text-[10px] uppercase font-mono text-muted-foreground flex items-center gap-1">
+                <Building2 className="w-3 h-3 text-indigo-500" /> College
+              </span>
+              <p className="text-xs font-bold text-foreground dark:text-white mt-1 truncate" title={appUserProfile.college_name}>
+                {appUserProfile.college_name?.trim() || "—"}
+              </p>
+            </div>
+
+            <div className="p-3 rounded-xl bg-black/[0.02] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06]">
+              <span className="text-[10px] uppercase font-mono text-muted-foreground flex items-center gap-1">
+                <GraduationCap className="w-3 h-3 text-violet-500" /> Department
+              </span>
+              <p className="text-xs font-bold text-foreground dark:text-white mt-1 truncate" title={appUserProfile.department}>
+                {appUserProfile.department?.trim() || "—"}
+              </p>
+            </div>
+
+            <div className="p-3 rounded-xl bg-black/[0.02] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06]">
+              <span className="text-[10px] uppercase font-mono text-muted-foreground flex items-center gap-1">
+                <Hash className="w-3 h-3 text-cyan-500" /> Roll Number
+              </span>
+              <p className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 mt-1">
+                {appUserProfile.roll_no?.trim() || "—"}
+              </p>
+            </div>
+
+            <div className="p-3 rounded-xl bg-black/[0.02] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06]">
+              <span className="text-[10px] uppercase font-mono text-muted-foreground flex items-center gap-1">
+                <Star className="w-3 h-3 text-amber-500" /> CGPA / Batch
+              </span>
+              <p className="text-xs font-bold text-amber-500 mt-1">
+                {appUserProfile.cgpa ? Number(appUserProfile.cgpa).toFixed(2) : "—"} • {appUserProfile.batch || "2022-26"}
+              </p>
+            </div>
+
+            <div className="p-3 rounded-xl bg-black/[0.02] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06]">
+              <span className="text-[10px] uppercase font-mono text-muted-foreground flex items-center gap-1">
+                <ShieldCheck className="w-3 h-3 text-emerald-500" /> Club Status
+              </span>
+              <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1">
+                {appUserProfile.is_core_member ? "Core Member ⭐" : appUserProfile.is_alumni ? "Alumni 🎓" : "Club Member"}
+              </p>
+            </div>
+          </div>
+        </div>
+      )} */}
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -615,16 +843,14 @@ const OverviewTab = React.memo(function OverviewTab({
                             </span>
                           );
                         }
-                        if (event.registerLink) {
+                        const isUpcoming = event.date ? new Date(event.date) >= new Date() : true;
+                        if (isUpcoming) {
                           return (
                             <button
-                              onClick={async () => {
-                                await registerForEvent(event._id, user);
-                                window.open(event.registerLink, "_blank", "noopener,noreferrer");
-                              }}
+                              onClick={() => onRegisterEvent?.(event)}
                               className="px-3 py-1.5 rounded-lg bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold hover:bg-indigo-500/20 dark:hover:bg-indigo-500/30 transition-colors flex-shrink-0 cursor-pointer flex items-center gap-1"
                             >
-                              <CalendarPlus className="w-3 h-3" />
+                              <Ticket className="w-3 h-3" />
                               <span>Register</span>
                             </button>
                           );
@@ -760,13 +986,14 @@ const OverviewTab = React.memo(function OverviewTab({
    TAB: Events
    ═══════════════════════════════════════════════ */
 const EventsTab = React.memo(function EventsTab({
-  user, upcomingEvents, pastEvents, eventsLoading, registeredEventIds = [], onGoToPasses,
+  user, upcomingEvents, pastEvents, eventsLoading, registeredEventIds = [], onGoToPasses, onRegisterEvent,
 }: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   user?: any;
   upcomingEvents: SanityEvent[]; pastEvents: SanityEvent[]; eventsLoading: boolean;
   registeredEventIds?: string[];
   onGoToPasses?: () => void;
+  onRegisterEvent?: (event: SanityEvent) => void;
 }) {
   const [filter, setFilter] = useState<"all" | "upcoming" | "past">("all");
   const displayEvents = filter === "upcoming" ? upcomingEvents : filter === "past" ? pastEvents : [...upcomingEvents, ...pastEvents];
@@ -785,17 +1012,16 @@ const EventsTab = React.memo(function EventsTab({
               f === "upcoming"
                 ? upcomingEvents.length
                 : f === "past"
-                ? pastEvents.length
-                : upcomingEvents.length + pastEvents.length;
+                  ? pastEvents.length
+                  : upcomingEvents.length + pastEvents.length;
             return (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all cursor-pointer ${
-                  filter === f
-                    ? "bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-semibold"
-                    : "text-muted-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
-                }`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all cursor-pointer ${filter === f
+                  ? "bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-semibold"
+                  : "text-muted-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
+                  }`}
               >
                 {f} ({count})
               </button>
@@ -840,11 +1066,10 @@ const EventsTab = React.memo(function EventsTab({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
                     <p className="font-semibold text-sm text-foreground dark:text-white truncate">{event.title}</p>
-                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold flex-shrink-0 ${
-                      isUpcoming
-                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                        : "bg-gray-500/10 text-gray-500 dark:text-gray-400"
-                    }`}>
+                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold flex-shrink-0 ${isUpcoming
+                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                      : "bg-gray-500/10 text-gray-500 dark:text-gray-400"
+                      }`}>
                       {isUpcoming ? "Upcoming" : "Past"}
                     </span>
                   </div>
@@ -889,18 +1114,14 @@ const EventsTab = React.memo(function EventsTab({
                       );
                     }
 
-                    if (event.registerLink && isUpcoming) {
+                    if (isUpcoming) {
                       return (
                         <button
-                          onClick={async () => {
-                            await registerForEvent(event._id, user);
-                            window.open(event.registerLink, "_blank", "noopener,noreferrer");
-                          }}
+                          onClick={() => onRegisterEvent?.(event)}
                           className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-500 hover:text-indigo-600 mt-2 transition-colors cursor-pointer"
                         >
-                          <CalendarPlus className="h-3 w-3" />
+                          <Ticket className="h-3 w-3" />
                           <span>Register for Event</span>
-                          <ExternalLink className="h-3 w-3" />
                         </button>
                       );
                     }
@@ -922,12 +1143,15 @@ const EventsTab = React.memo(function EventsTab({
    ═══════════════════════════════════════════════ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const ProfileTab = React.memo(function ProfileTab({
-  user, isLoaded, memberSince, verificationData, onOpenVerification,
+  user, isLoaded, memberSince, verificationData, onOpenVerification, appUserProfile,
+  onOpenPasswordModal,
 }: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   user: any; isLoaded: boolean; memberSince: string;
   verificationData?: VerifiedCollegeData | null;
   onOpenVerification?: () => void;
+  appUserProfile?: any;
+  onOpenPasswordModal?: () => void;
 }) {
   if (!isLoaded) {
     return (
@@ -1000,78 +1224,189 @@ const ProfileTab = React.memo(function ProfileTab({
         </div>
       </div>
 
-      {/* College ID Verification Card */}
-      <div className="mt-6 rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0c0d14] p-6 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/30">
-              <Building2 className="w-4 h-4" />
+      {/* Mobile App Academic Credentials Card (Synced with Supabase 'user' table) */}
+      {appUserProfile && (
+        <div className="mt-6 rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0c0d14] p-6 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-500/30">
+                <Smartphone className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="font-semibold text-foreground dark:text-white text-sm">Academic Profile</h4>
+              </div>
             </div>
-            <div>
-              <h4 className="font-semibold text-foreground dark:text-white text-sm">College Verification Status</h4>
-              <p className="text-xs text-muted-foreground">Official AICTE Indian Colleges validation</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[10px] uppercase font-mono font-bold px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/25 flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                App Synced
+              </span>
+              {(verificationData?.isVerified || appUserProfile.is_identity_verified) && (
+                <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                  Verified Student
+                </span>
+              )}
+              {appUserProfile && !appUserProfile.hashed_password && (
+                <button
+                  onClick={onOpenPasswordModal}
+                  className="px-3 py-1 rounded-xl text-xs font-semibold bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/25 transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Lock className="w-3 h-3" />
+                  <span>Set App Password</span>
+                </button>
+              )}
             </div>
           </div>
-          {verificationData?.isVerified ? (
-            <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              Verified Student
-            </span>
-          ) : (
-            <button
-              onClick={onOpenVerification}
-              className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 text-white shadow-md shadow-indigo-500/20 hover:opacity-90 transition-opacity cursor-pointer flex items-center gap-1.5"
-            >
-              <ShieldAlert className="w-3.5 h-3.5" />
-              Verify College ID
-            </button>
-          )}
-        </div>
 
-        {verificationData?.isVerified ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-            <div className="p-3.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/[0.05] dark:border-white/[0.05]">
-              <span className="text-[11px] text-muted-foreground uppercase font-mono tracking-wider">Institution Name</span>
-              <p className="text-xs font-bold text-foreground dark:text-white mt-0.5">{verificationData.collegeName}</p>
-            </div>
-            {verificationData.university && (
-              <div className="p-3.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/[0.05] dark:border-white/[0.05]">
-                <span className="text-[11px] text-muted-foreground uppercase font-mono tracking-wider">Affiliated University</span>
-                <p className="text-xs font-semibold text-foreground dark:text-white mt-0.5">{verificationData.university}</p>
-              </div>
-            )}
-            <div className="p-3.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/[0.05] dark:border-white/[0.05]">
-              <span className="text-[11px] text-muted-foreground uppercase font-mono tracking-wider">AICTE Permanent ID</span>
-              <p className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 mt-0.5">{verificationData.aicteId}</p>
-            </div>
-            {verificationData.studentName && (
-              <div className="p-3.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/[0.05] dark:border-white/[0.05]">
-                <span className="text-[11px] text-muted-foreground uppercase font-mono tracking-wider">Verified Student Name</span>
-                <p className="text-xs font-semibold text-foreground dark:text-white mt-0.5 flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                  <span>{verificationData.studentName}</span>
-                </p>
-              </div>
-            )}
-            <div className="p-3.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/[0.05] dark:border-white/[0.05]">
-              <span className="text-[11px] text-muted-foreground uppercase font-mono tracking-wider">Location & Verified At</span>
-              <p className="text-xs text-foreground dark:text-white mt-0.5">
-                {verificationData.district ? `${verificationData.district}, ` : ""}{verificationData.state || "India"} • {new Date(verificationData.verifiedAt).toLocaleDateString("en-IN")}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 pt-1">
+            <div className="p-3 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/[0.05] dark:border-white/[0.05]">
+              <span className="text-[10px] uppercase font-mono text-muted-foreground">College</span>
+              <p className="text-xs font-bold text-foreground dark:text-white truncate mt-0.5" title={appUserProfile.college_name || verificationData?.collegeName || "—"}>
+                {appUserProfile.college_name || verificationData?.collegeName || "—"}
               </p>
             </div>
+            <div className="p-3 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/[0.05] dark:border-white/[0.05]">
+              <span className="text-[10px] uppercase font-mono text-muted-foreground">Department</span>
+              <p className="text-xs font-bold text-foreground dark:text-white truncate mt-0.5">{appUserProfile.department || "—"}</p>
+            </div>
+            <div className="p-3 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/[0.05] dark:border-white/[0.05]">
+              <span className="text-[10px] uppercase font-mono text-muted-foreground">Year / Semester</span>
+              <p className="text-xs font-bold text-foreground dark:text-white mt-0.5">
+                Year {appUserProfile.year || "—"} • Sem {appUserProfile.semester || "—"}
+              </p>
+            </div>
+            <div className="p-3 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/[0.05] dark:border-white/[0.05]">
+              <span className="text-[10px] uppercase font-mono text-muted-foreground">Roll Number</span>
+              <p className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 mt-0.5">{appUserProfile.roll_no || "—"}</p>
+            </div>
+            <div className="p-3 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/[0.05] dark:border-white/[0.05]">
+              <span className="text-[10px] uppercase font-mono text-muted-foreground">CGPA</span>
+              <p className="text-xs font-bold text-foreground dark:text-white mt-0.5">{appUserProfile.cgpa ? Number(appUserProfile.cgpa).toFixed(2) : "—"}</p>
+            </div>
+            <div className="p-3 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/[0.05] dark:border-white/[0.05]">
+              <span className="text-[10px] uppercase font-mono text-muted-foreground">Batch</span>
+              <p className="text-xs font-bold text-foreground dark:text-white mt-0.5">{appUserProfile.batch || "—"}</p>
+            </div>
+            <div className="p-3 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/[0.05] dark:border-white/[0.05]">
+              <span className="text-[10px] uppercase font-mono text-muted-foreground">Identity Verified</span>
+              <div className="text-xs font-bold text-foreground dark:text-white mt-0.5 flex items-center gap-1">
+                {appUserProfile.is_identity_verified || verificationData?.isVerified ? (
+                  <span className="text-emerald-500 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Verified</span>
+                ) : (
+                  <button
+                    onClick={onOpenVerification}
+                    className="text-amber-500 hover:underline cursor-pointer flex items-center gap-1 text-xs"
+                  >
+                    Pending • Verify ID &rarr;
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="p-3 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/[0.05] dark:border-white/[0.05]">
+              <span className="text-[10px] uppercase font-mono text-muted-foreground">Club Status</span>
+              <p className="text-xs font-bold text-foreground dark:text-white mt-0.5">
+                {appUserProfile.is_core_member ? "Core Member ⭐" : appUserProfile.is_alumni ? "Alumni 🎓" : "Club Member"}
+              </p>
+            </div>
+            {/* If verified with genuine AICTE Permanent ID, show it directly in the Academic Profile */}
+            {verificationData?.aicteId &&
+              verificationData.aicteId !== appUserProfile.roll_no &&
+              verificationData.aicteId !== "CJ-APP" && (
+                <div className="p-3 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/[0.05] dark:border-white/[0.05]">
+                  <span className="text-[10px] uppercase font-mono text-muted-foreground">AICTE Permanent ID</span>
+                  <p className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 mt-0.5">{verificationData.aicteId}</p>
+                </div>
+              )}
+            {verificationData?.university &&
+              verificationData.university.trim().toLowerCase() !== (appUserProfile.department || "").trim().toLowerCase() &&
+              verificationData.university !== "Verified Member" &&
+              verificationData.university !== "NOT APPLICABLE" && (
+                <div className="p-3 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/[0.05] dark:border-white/[0.05]">
+                  <span className="text-[10px] uppercase font-mono text-muted-foreground">Affiliated University</span>
+                  <p className="text-xs font-semibold text-foreground dark:text-white mt-0.5 truncate" title={verificationData.university}>
+                    {verificationData.university}
+                  </p>
+                </div>
+              )}
           </div>
-        ) : (
-          <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/20 text-xs text-muted-foreground flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <p>Your college identity card has not been verified yet. Upload your card to unlock full club credentials and certificates.</p>
-            <button
-              onClick={onOpenVerification}
-              className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex-shrink-0 cursor-pointer"
-            >
-              Upload ID Card &rarr;
-            </button>
+        </div>
+      )}
+
+      {/* College ID Verification Card: Hide if user is already verified and has Academic Profile; Show if unverified OR no app profile yet */}
+      {(!verificationData?.isVerified || !appUserProfile) && (
+        <div className="mt-6 rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0c0d14] p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/30">
+                <Building2 className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="font-semibold text-foreground dark:text-white text-sm">College Verification Status</h4>
+                <p className="text-xs text-muted-foreground">Official AICTE Indian Colleges validation</p>
+              </div>
+            </div>
+            {verificationData?.isVerified ? (
+              <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                Verified Student
+              </span>
+            ) : (
+              <button
+                onClick={onOpenVerification}
+                className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 text-white shadow-md shadow-indigo-500/20 hover:opacity-90 transition-opacity cursor-pointer flex items-center gap-1.5"
+              >
+                <ShieldAlert className="w-3.5 h-3.5" />
+                Verify College ID
+              </button>
+            )}
           </div>
-        )}
-      </div>
+
+          {verificationData?.isVerified ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+              <div className="p-3.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/[0.05] dark:border-white/[0.05]">
+                <span className="text-[11px] text-muted-foreground uppercase font-mono tracking-wider">Institution Name</span>
+                <p className="text-xs font-bold text-foreground dark:text-white mt-0.5">{verificationData.collegeName}</p>
+              </div>
+              {verificationData.university && (
+                <div className="p-3.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/[0.05] dark:border-white/[0.05]">
+                  <span className="text-[11px] text-muted-foreground uppercase font-mono tracking-wider">Affiliated University</span>
+                  <p className="text-xs font-semibold text-foreground dark:text-white mt-0.5">{verificationData.university}</p>
+                </div>
+              )}
+              <div className="p-3.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/[0.05] dark:border-white/[0.05]">
+                <span className="text-[11px] text-muted-foreground uppercase font-mono tracking-wider">AICTE Permanent ID</span>
+                <p className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 mt-0.5">{verificationData.aicteId}</p>
+              </div>
+              {verificationData.studentName && (
+                <div className="p-3.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/[0.05] dark:border-white/[0.05]">
+                  <span className="text-[11px] text-muted-foreground uppercase font-mono tracking-wider">Verified Student Name</span>
+                  <p className="text-xs font-semibold text-foreground dark:text-white mt-0.5 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                    <span>{verificationData.studentName}</span>
+                  </p>
+                </div>
+              )}
+              <div className="p-3.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/[0.05] dark:border-white/[0.05]">
+                <span className="text-[11px] text-muted-foreground uppercase font-mono tracking-wider">Location & Verified At</span>
+                <p className="text-xs text-foreground dark:text-white mt-0.5">
+                  {verificationData.district ? `${verificationData.district}, ` : ""}{verificationData.state || "India"} • {new Date(verificationData.verifiedAt).toLocaleDateString("en-IN")}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/20 text-xs text-muted-foreground flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <p>Your college identity card has not been verified yet. Upload your card to unlock full club credentials and certificates.</p>
+              <button
+                onClick={onOpenVerification}
+                className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex-shrink-0 cursor-pointer"
+              >
+                Upload ID Card &rarr;
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Badges Section */}
       <div className="mt-6 rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0c0d14] p-6 shadow-sm">
@@ -1090,9 +1425,8 @@ const ProfileTab = React.memo(function ProfileTab({
             return (
               <div
                 key={badge.name}
-                className={`rounded-xl border border-black/[0.06] dark:border-white/[0.06] p-4 text-center transition-all ${
-                  badge.unlocked ? "bg-black/[0.01] dark:bg-white/[0.02]" : "opacity-40 grayscale"
-                }`}
+                className={`rounded-xl border border-black/[0.06] dark:border-white/[0.06] p-4 text-center transition-all ${badge.unlocked ? "bg-black/[0.01] dark:bg-white/[0.02]" : "opacity-40 grayscale"
+                  }`}
               >
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-gradient-to-br ${badge.gradient} shadow-md mx-auto mb-2`}>
                   <Icon className="h-4 w-4 text-white" />
@@ -1114,7 +1448,17 @@ const ProfileTab = React.memo(function ProfileTab({
 /* ═══════════════════════════════════════════════
    TAB: Settings
    ═══════════════════════════════════════════════ */
-const SettingsTab = React.memo(function SettingsTab() {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const SettingsTab = React.memo(function SettingsTab({
+  user,
+  appUserProfile,
+  onOpenPasswordModal,
+}: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  user?: any;
+  appUserProfile?: any;
+  onOpenPasswordModal?: () => void;
+}) {
   const [notifications, setNotifications] = React.useState({
     events: true,
     announcements: true,
@@ -1202,16 +1546,14 @@ const SettingsTab = React.memo(function SettingsTab() {
                             [item.key]: !prev[item.key],
                           }))
                         }
-                        className={`relative w-11 h-6 rounded-full transition-colors duration-200 flex-shrink-0 cursor-pointer ${
-                          notifications[item.key]
-                            ? "bg-indigo-500"
-                            : "bg-black/10 dark:bg-white/10"
-                        }`}
+                        className={`relative w-11 h-6 rounded-full transition-colors duration-200 flex-shrink-0 cursor-pointer ${notifications[item.key]
+                          ? "bg-indigo-500"
+                          : "bg-black/10 dark:bg-white/10"
+                          }`}
                       >
                         <span
-                          className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
-                            notifications[item.key] ? "translate-x-5" : "translate-x-0"
-                          }`}
+                          className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${notifications[item.key] ? "translate-x-5" : "translate-x-0"
+                            }`}
                         />
                       </button>
                     )}
@@ -1224,6 +1566,43 @@ const SettingsTab = React.memo(function SettingsTab() {
             </div>
           );
         })}
+
+        {/* Mobile App Account & Sync - Only shown for web users without an existing app password */}
+        {appUserProfile && !appUserProfile.hashed_password && (
+          <div className="rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0c0d14] overflow-hidden shadow-sm">
+            <div className="flex items-center gap-3 p-5 border-b border-black/[0.06] dark:border-white/[0.06]">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-gradient-to-br from-indigo-500 to-violet-500 shadow-md">
+                <Smartphone className="h-4 w-4 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground dark:text-white text-sm">Coding Junction Mobile App</h3>
+                <p className="text-[11px] text-muted-foreground">Manage your mobile app login credentials &amp; Supabase sync.</p>
+              </div>
+            </div>
+            <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs font-semibold text-foreground dark:text-white">
+                    App Account Email:
+                  </span>
+                  <span className="font-mono text-xs text-indigo-600 dark:text-indigo-400 font-bold">
+                    {user?.primaryEmailAddress?.emailAddress || appUserProfile?.email || "—"}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Set a password for your account to log into the Coding Junction Android or iOS application with this email.
+                </p>
+              </div>
+              <button
+                onClick={onOpenPasswordModal}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-xs font-semibold hover:opacity-90 transition-opacity shadow-md shadow-indigo-500/20 flex items-center gap-2 self-start sm:self-auto cursor-pointer flex-shrink-0"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span>Set App Password</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Account Management */}
         <div className="rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0c0d14] overflow-hidden shadow-sm">
