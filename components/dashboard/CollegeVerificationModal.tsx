@@ -151,14 +151,20 @@ export function CollegeVerificationModal({
       if (data.success && data.bestMatch) {
         setMatchedCollege(data.bestMatch);
         setCandidates(data.candidates || []);
-        setScanStatus("Institution & name processed successfully!");
+        setScanStatus("College institution and student name matched successfully!");
       } else if (data.candidates && data.candidates.length > 0) {
-        setMatchedCollege(data.candidates[0]);
+        setMatchedCollege(null);
         setCandidates(data.candidates);
-        setScanStatus("Potential matches found. Please confirm your college.");
-      } else {
-        setScanStatus("Text scanned. Please select or verify your college below.");
+        setScanStatus("Potential matches found. Please select your college below.");
         setShowManualSearch(true);
+      } else {
+        setMatchedCollege(null);
+        setCandidates([]);
+        setScanStatus("Could not automatically identify your college. Please search your institution below.");
+        setShowManualSearch(true);
+        if (data.message) {
+          setErrorMsg(data.message);
+        }
       }
     } catch (err) {
       console.error("OCR / Verification error:", err);
@@ -236,6 +242,22 @@ export function CollegeVerificationModal({
             collegeVerification: verificationPayload,
           },
         });
+      }
+
+      // Sync with Supabase 'user' table so mobile app gets the verified status & college
+      try {
+        await fetch("/api/user/update-profile", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            college_name: matchedCollege.name,
+            is_verified: true,
+            is_identity_verified: true,
+            verification_status: "verified",
+          }),
+        });
+      } catch (syncErr) {
+        console.warn("Notice: Background Supabase sync for college verification:", syncErr);
       }
 
       onVerified(verificationPayload);

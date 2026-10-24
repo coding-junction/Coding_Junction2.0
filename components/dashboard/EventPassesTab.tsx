@@ -28,9 +28,12 @@ import {
   RefreshCw,
   Lock,
   CalendarDays,
+  XCircle,
+  AlertTriangle,
 } from "lucide-react";
 
-import { registerForEvent, getRegisteredEventIds, downloadEventPassPng } from "@/lib/eventPass";
+import { registerForEvent, cancelEventRegistration, getRegisteredEventIds, downloadEventPassPng, generateQrDataUrl } from "@/lib/eventPass";
+import { EventRegistrationModal } from "@/components/events/EventRegistrationModal";
 
 interface SanityEvent {
   _id: string;
@@ -65,11 +68,14 @@ export const EventPassesTab: React.FC<EventPassesTabProps> = ({
   const [activeSubTab, setActiveSubTab] = useState<"tickets" | "browse" | "history">("tickets");
   const [registeredEventIds, setRegisteredEventIds] = useState<string[]>([]);
   const [selectedTicketEvent, setSelectedTicketEvent] = useState<SanityEvent | null>(null);
+  const [registerModalEvent, setRegisterModalEvent] = useState<SanityEvent | null>(null);
   const [isNotified, setIsNotified] = useState(false);
   const [localAttendedIds, setLocalAttendedIds] = useState<string[]>([]);
+  const [eventToCancel, setEventToCancel] = useState<SanityEvent | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
 
-  // Flag to control public visibility (False = Coming Soon showcase to all users)
-  const isPublicLaunch = false;
+  // Flag to control public visibility (Set to true to show active pass and verification engine)
+  const isPublicLaunch = true;
 
   const userId = user?.id || "USER_ANON";
   const userName = user?.fullName || user?.firstName || "Community Member";
@@ -84,12 +90,31 @@ export const EventPassesTab: React.FC<EventPassesTabProps> = ({
     };
 
     window.addEventListener("cj:event-registered", handleSync);
+    window.addEventListener("cj:event-cancelled", handleSync);
     window.addEventListener("storage", handleSync);
     return () => {
       window.removeEventListener("cj:event-registered", handleSync);
+      window.removeEventListener("cj:event-cancelled", handleSync);
       window.removeEventListener("storage", handleSync);
     };
   }, [user, user?.unsafeMetadata?.registeredEventIds]);
+
+  const handleConfirmCancelRegistration = async () => {
+    if (!eventToCancel) return;
+    setIsCancelling(true);
+    try {
+      const next = await cancelEventRegistration(eventToCancel._id, user, eventToCancel.title);
+      setRegisteredEventIds(next);
+      if (selectedTicketEvent?._id === eventToCancel._id) {
+        setSelectedTicketEvent(null);
+      }
+      setEventToCancel(null);
+    } catch (err) {
+      console.error("Failed to cancel event registration:", err);
+    } finally {
+      setIsCancelling(false);
+    }
+  };
 
   // Save or toggle registered events
   const handleToggleRSVP = async (eventId: string, e?: React.MouseEvent) => {
@@ -390,11 +415,10 @@ export const EventPassesTab: React.FC<EventPassesTabProps> = ({
                 <button
                   onClick={() => setIsNotified(true)}
                   disabled={isNotified}
-                  className={`inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-xs md:text-sm transition-all duration-200 cursor-pointer ${
-                    isNotified
-                      ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 cursor-default"
-                      : "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black shadow-lg shadow-amber-500/20"
-                  }`}
+                  className={`inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-xs md:text-sm transition-all duration-200 cursor-pointer ${isNotified
+                    ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 cursor-default"
+                    : "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black shadow-lg shadow-amber-500/20"
+                    }`}
                 >
                   {isNotified ? (
                     <>
@@ -458,33 +482,34 @@ export const EventPassesTab: React.FC<EventPassesTabProps> = ({
       {/* ─── ACTIVE EVENT PASS ENGINE (Revealed when isPublicLaunch is enabled) ─── */}
       {isPublicLaunch && (
         <div className="space-y-6">
-          {/* ─── Coming Soon Beta Notice Banner ─── */}
-          <div className="relative overflow-hidden rounded-2xl border border-amber-500/25 dark:border-amber-500/30 bg-gradient-to-r from-amber-500/[0.08] via-indigo-500/[0.04] to-transparent p-5">
+          {/* ─── Official Digital Pass & Gate Check-in Banner ─── */}
+          <div className="relative overflow-hidden rounded-2xl border border-indigo-500/25 dark:border-indigo-500/30 bg-gradient-to-r from-indigo-500/[0.08] via-violet-500/[0.04] to-transparent p-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-500 flex-shrink-0">
-                  <Sparkles className="w-5 h-5" />
+                <div className="w-10 h-10 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-500 flex-shrink-0">
+                  <Ticket className="w-5 h-5" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="font-bold text-sm text-foreground dark:text-white">
-                      Automated Check-in System [Admin Test Mode Active]
+                      Digital Event Passes &amp; Gate Verification
                     </h3>
-                    <span className="text-[9px] font-mono font-bold uppercase px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-500">
-                      Testing Mode
-                    </span>
+                    {/* <span className="text-[9px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                      Live
+                    </span> */}
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5 max-w-2xl leading-relaxed">
-                    You are currently testing the digital boarding pass engine. Passes can be claimed, verified with gate passcodes, and downloaded as high-res PNG tickets.
+                    Official admission passes for Coding Junction events. Present your pass at the venue gate or enter the announced check-in passcode to verify attendance and unlock your verified certificate.
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <span className="text-xs font-mono text-muted-foreground bg-black/[0.04] dark:bg-white/[0.04] px-3 py-1.5 rounded-lg border border-black/[0.06] dark:border-white/[0.06]">
-                  Launch: Q4 2026
+              {/* <div className="flex items-center gap-2 flex-shrink-0">
+                <span className="text-xs font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20 font-bold flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Engine Active</span>
                 </span>
-              </div>
+              </div> */}
             </div>
           </div>
 
@@ -492,11 +517,10 @@ export const EventPassesTab: React.FC<EventPassesTabProps> = ({
           <div className="flex items-center gap-2 border-b border-black/[0.06] dark:border-white/[0.06] pb-3">
             <button
               onClick={() => setActiveSubTab("tickets")}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
-                activeSubTab === "tickets"
-                  ? "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30"
-                  : "text-muted-foreground hover:text-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
-              }`}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${activeSubTab === "tickets"
+                ? "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30"
+                : "text-muted-foreground hover:text-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
+                }`}
             >
               <Ticket className="w-3.5 h-3.5" />
               <span>My Passes ({myRegisteredUpcomingEvents.length})</span>
@@ -504,11 +528,10 @@ export const EventPassesTab: React.FC<EventPassesTabProps> = ({
 
             <button
               onClick={() => setActiveSubTab("browse")}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
-                activeSubTab === "browse"
-                  ? "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30"
-                  : "text-muted-foreground hover:text-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
-              }`}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${activeSubTab === "browse"
+                ? "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30"
+                : "text-muted-foreground hover:text-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
+                }`}
             >
               <Calendar className="w-3.5 h-3.5" />
               <span>All Upcoming ({upcomingEvents.length})</span>
@@ -516,11 +539,10 @@ export const EventPassesTab: React.FC<EventPassesTabProps> = ({
 
             <button
               onClick={() => setActiveSubTab("history")}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
-                activeSubTab === "history"
-                  ? "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30"
-                  : "text-muted-foreground hover:text-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
-              }`}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${activeSubTab === "history"
+                ? "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30"
+                : "text-muted-foreground hover:text-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
+                }`}
             >
               <History className="w-3.5 h-3.5" />
               <span>Attendance History ({attendedEvents.length})</span>
@@ -561,9 +583,11 @@ export const EventPassesTab: React.FC<EventPassesTabProps> = ({
                       isRegistered={true}
                       onToggleRSVP={(e) => handleToggleRSVP(event._id, e)}
                       onViewPass={() => setSelectedTicketEvent(event)}
+                      onRegister={() => setRegisterModalEvent(event)}
                       onDownloadPass={() => handleDownloadPass(event)}
                       onGoogleCalendar={() => window.open(getGoogleCalendarUrl(event), "_blank")}
                       onDownloadICal={(e) => handleDownloadICal(event, e)}
+                      onCancelRegistration={() => setEventToCancel(event)}
                     />
                   ))}
                 </div>
@@ -586,9 +610,11 @@ export const EventPassesTab: React.FC<EventPassesTabProps> = ({
                       isRegistered={isRegistered}
                       onToggleRSVP={(e) => handleToggleRSVP(event._id, e)}
                       onViewPass={() => setSelectedTicketEvent(event)}
+                      onRegister={() => setRegisterModalEvent(event)}
                       onDownloadPass={() => handleDownloadPass(event)}
                       onGoogleCalendar={() => window.open(getGoogleCalendarUrl(event), "_blank")}
                       onDownloadICal={(e) => handleDownloadICal(event, e)}
+                      onCancelRegistration={() => setEventToCancel(event)}
                     />
                   );
                 })}
@@ -640,20 +666,33 @@ export const EventPassesTab: React.FC<EventPassesTabProps> = ({
                             <span>
                               {event.date
                                 ? new Date(event.date).toLocaleDateString("en-IN", {
-                                    day: "numeric",
-                                    month: "short",
-                                    year: "numeric",
-                                  })
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                })
                                 : "Past Event"}
                             </span>
                             {event.location && <span>• {event.location}</span>}
                           </div>
                         </div>
 
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex-shrink-0">
-                          <CheckCircle2 className="w-3 h-3" />
-                          <span>Attended</span>
-                        </span>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>Attended</span>
+                          </span>
+
+                          {onNavigateToCertificates && (
+                            <button
+                              onClick={() => onNavigateToCertificates()}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-mono font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm transition-all cursor-pointer"
+                              title="View & Download Certificate"
+                            >
+                              <Award className="w-3.5 h-3.5" />
+                              <span>Certificate</span>
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -676,9 +715,71 @@ export const EventPassesTab: React.FC<EventPassesTabProps> = ({
                 onGoogleCalendar={() => window.open(getGoogleCalendarUrl(selectedTicketEvent), "_blank")}
                 onDownloadICal={(e) => handleDownloadICal(selectedTicketEvent, e)}
                 onNavigateToCertificates={onNavigateToCertificates}
+                onCancelRegistration={() => setEventToCancel(selectedTicketEvent)}
               />
             )}
           </AnimatePresence>
+
+          {/* ─── CONFIRMATION MODAL: CANCEL REGISTRATION & REVOKE PASS ─── */}
+          <AnimatePresence>
+            {eventToCancel && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                  className="relative w-full max-w-sm rounded-3xl overflow-hidden bg-[#0a0b12] text-white border border-white/[0.12] p-6 shadow-2xl"
+                >
+                  <div className="w-11 h-11 rounded-2xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400 mb-4 shadow-sm">
+                    <AlertTriangle className="w-5 h-5" />
+                  </div>
+                  <h3 className="text-base font-bold text-white tracking-tight">
+                    Cancel Event Registration?
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+                    Are you sure you want to cancel your registration for <strong className="text-white">{eventToCancel.title}</strong>? Your digital entry pass will be revoked and your seat released.
+                  </p>
+                  <div className="flex items-center gap-2.5 mt-6">
+                    <button
+                      type="button"
+                      onClick={() => setEventToCancel(null)}
+                      disabled={isCancelling}
+                      className="flex-1 py-2.5 px-3 rounded-xl border border-white/[0.1] hover:bg-white/[0.05] text-xs font-semibold text-slate-300 transition-colors cursor-pointer"
+                    >
+                      Keep My Pass
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleConfirmCancelRegistration}
+                      disabled={isCancelling}
+                      className="flex-1 py-2.5 px-3 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-lg shadow-rose-600/25 transition-all cursor-pointer disabled:opacity-50 active:scale-[0.98]"
+                    >
+                      {isCancelling ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>Revoking...</span>
+                        </>
+                      ) : (
+                        <span>Yes, Cancel</span>
+                      )}
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
+
+          {/* ─── IN-WEBSITE EVENT REGISTRATION MODAL ─── */}
+          <EventRegistrationModal
+            isOpen={Boolean(registerModalEvent)}
+            onClose={() => setRegisterModalEvent(null)}
+            event={registerModalEvent as any}
+            onSuccess={() => {
+              if (registerModalEvent) {
+                setRegisteredEventIds((prev) => Array.from(new Set([...prev, registerModalEvent._id])));
+              }
+            }}
+          />
         </div>
       )}
     </motion.div>
@@ -695,9 +796,11 @@ function TicketCard({
   isRegistered,
   onToggleRSVP: _onToggleRSVP,
   onViewPass,
+  onRegister,
   onDownloadPass,
   onGoogleCalendar,
   onDownloadICal: _onDownloadICal,
+  onCancelRegistration,
 }: {
   event: SanityEvent;
   userId: string;
@@ -705,9 +808,11 @@ function TicketCard({
   isRegistered: boolean;
   onToggleRSVP: (e: React.MouseEvent) => void;
   onViewPass: () => void;
+  onRegister: () => void;
   onDownloadPass: () => void;
   onGoogleCalendar: () => void;
   onDownloadICal: (e: React.MouseEvent) => void;
+  onCancelRegistration?: () => void;
 }) {
   const eventImg = event.images?.[0]?.asset?.url || event.image?.asset?.url;
 
@@ -756,10 +861,10 @@ function TicketCard({
             <span className="truncate">
               {event.date
                 ? new Date(event.date).toLocaleDateString("en-IN", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                  })
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                })
                 : "Date Announced Soon"}
             </span>
           </div>
@@ -773,30 +878,21 @@ function TicketCard({
       </div>
 
       {/* Action Row */}
-      <div className="flex items-center justify-between pt-3 border-t border-black/[0.04] dark:border-white/[0.04]">
+      <div className="flex items-center justify-between pt-3 border-t border-black/[0.04] dark:border-white/[0.04] gap-2">
         <div className="flex items-center gap-1.5">
           {isRegistered ? (
             <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
               <Check className="w-3 h-3" />
               <span>Registered</span>
             </span>
-          ) : event.registerLink ? (
-            <a
-              href={event.registerLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-indigo-500 hover:text-indigo-600 font-medium flex items-center gap-1 p-1"
-            >
-              <span>Register</span>
-              <ExternalLink className="w-3 h-3" />
-            </a>
           ) : (
-            <span className="text-[11px] font-mono text-muted-foreground px-2 py-1 rounded bg-black/[0.03] dark:bg-white/[0.04]">
-              Details Announced
+            <span className="inline-flex items-center gap-1 text-[11px] font-mono text-muted-foreground px-2 py-0.5 rounded bg-black/[0.03] dark:bg-white/[0.04]">
+              <Calendar className="w-3 h-3 text-indigo-400" />
+              <span>Registration Open</span>
             </span>
           )}
 
-          {/* Pass Download Icon (shown when pass is generated) */}
+          {/* Pass Download Icon (shown when pass is registered) */}
           {isRegistered && (
             <button
               onClick={(e) => {
@@ -818,24 +914,38 @@ function TicketCard({
           >
             <CalendarPlus className="w-4 h-4" />
           </button>
+
+          {/* Cancel Registration Action (when registered) */}
+          {isRegistered && onCancelRegistration && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onCancelRegistration();
+              }}
+              title="Cancel Registration & Revoke Pass"
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
+            >
+              <XCircle className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
-        {/* If registered, show View Pass */}
+        {/* Action Button: View Pass if Registered, Register for Event if Unregistered */}
         {isRegistered ? (
           <button
             onClick={onViewPass}
-            className="px-2.5 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-mono font-semibold flex items-center gap-1.5 transition-colors cursor-pointer border border-indigo-500/25"
+            className="px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-mono font-semibold flex items-center gap-1.5 transition-colors cursor-pointer border border-indigo-500/25"
           >
             <QrCode className="w-3.5 h-3.5" />
             <span>View Pass</span>
           </button>
         ) : (
           <button
-            onClick={onViewPass}
-            className="px-2.5 py-1.5 rounded-lg bg-black/[0.04] dark:bg-white/[0.04] hover:bg-black/[0.08] dark:hover:bg-white/[0.08] text-foreground dark:text-white text-xs font-mono font-semibold flex items-center gap-1.5 transition-colors cursor-pointer border border-black/[0.08] dark:border-white/[0.08]"
+            onClick={onRegister}
+            className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-indigo-500 to-violet-600 hover:opacity-90 text-white text-xs font-semibold flex items-center gap-1.5 transition-opacity cursor-pointer shadow-md shadow-indigo-500/20"
           >
             <Ticket className="w-3.5 h-3.5" />
-            <span>Claim Pass</span>
+            <span>Register for Event</span>
           </button>
         )}
       </div>
@@ -857,6 +967,7 @@ function EventTicketModal({
   onGoogleCalendar,
   onDownloadICal,
   onNavigateToCertificates,
+  onCancelRegistration,
 }: {
   event: SanityEvent;
   userId: string;
@@ -868,15 +979,54 @@ function EventTicketModal({
   onGoogleCalendar: () => void;
   onDownloadICal: (e: React.MouseEvent) => void;
   onNavigateToCertificates?: () => void;
+  onCancelRegistration?: () => void;
 }) {
   const [passcode, setPasscode] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
   const [verifyError, setVerifyError] = useState("");
   const [verifySuccess, setVerifySuccess] = useState(false);
+  const [qrCodeUrl, setQrCodeUrl] = useState("");
 
   const effectiveAttended = isAttended || verifySuccess;
 
   const ticketId = `CJ-EVT-${event._id.slice(-4).toUpperCase()}-${userId.replace("user_", "").slice(-4).toUpperCase()}`;
+
+  useEffect(() => {
+    let isMounted = true;
+    generateQrDataUrl(ticketId).then((url) => {
+      if (isMounted && url) setQrCodeUrl(url);
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [ticketId]);
+
+  // Live check: When mobile app scans attendee at venue gate, update modal to checked in
+  useEffect(() => {
+    if (effectiveAttended) return;
+
+    let isMounted = true;
+    const checkStatus = async () => {
+      try {
+        const res = await fetch(`/api/events/check-status?eventId=${encodeURIComponent(event._id)}&ticketId=${encodeURIComponent(ticketId)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && data.attended) {
+            setVerifySuccess(true);
+          }
+        }
+      } catch {
+        // Ignore network hiccups
+      }
+    };
+
+    checkStatus();
+    const interval = setInterval(checkStatus, 4000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [event._id, ticketId, effectiveAttended]);
 
   const handlePasscodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -986,22 +1136,28 @@ function EventTicketModal({
             </div>
           </div>
 
-          {/* Authentic Conference Ticket Barcode Stub */}
-          <div className="flex flex-col items-center justify-center p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
-            <div className="flex items-center justify-center gap-[3px] h-9 w-full max-w-[260px] opacity-75">
-              {[4, 2, 6, 1, 3, 5, 2, 4, 1, 3, 6, 2, 5, 1, 4, 3, 2, 6, 1, 4, 5, 2, 3, 1, 4, 6, 2, 5, 1, 3, 4, 2].map(
-                (w, i) => (
-                  <div
-                    key={i}
-                    style={{ width: `${w}px` }}
-                    className="h-full bg-slate-300 rounded-sm"
-                  />
-                )
+          {/* Authentic Conference Ticket Scannable QR Code */}
+          <div className="flex flex-col items-center justify-center p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08] shadow-inner">
+            <div className="p-3 bg-white rounded-2xl shadow-xl border border-white/40">
+              {qrCodeUrl ? (
+                <img
+                  src={qrCodeUrl}
+                  alt={`QR Code for ${ticketId}`}
+                  className="w-36 h-36 sm:w-40 sm:h-40 object-contain rounded-lg"
+                />
+              ) : (
+                <div className="w-36 h-36 sm:w-40 sm:h-40 bg-slate-100 flex items-center justify-center text-slate-400 text-xs font-mono">
+                  Loading QR...
+                </div>
               )}
             </div>
-            <span className="font-mono text-[10px] tracking-[0.25em] text-slate-400 mt-2 uppercase font-medium">
+            <span className="font-mono text-sm tracking-[0.2em] text-indigo-400 mt-3 uppercase font-bold">
               {ticketId}
             </span>
+            <p className="text-[10px] text-slate-400 font-mono mt-1 text-center flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              Scan with Coding Junction Mobile App at venue gate
+            </p>
           </div>
 
           {/* Physical Attendance Verification Form or Unlocked Certificate */}
@@ -1104,11 +1260,11 @@ function EventTicketModal({
               <span>
                 {event.date
                   ? new Date(event.date).toLocaleDateString("en-IN", {
-                      weekday: "long",
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
-                    })
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })
                   : "Date TBA"}
               </span>
             </div>
@@ -1119,6 +1275,22 @@ function EventTicketModal({
               </div>
             )}
           </div>
+
+          {/* Cancel Registration Option inside Pass Modal */}
+          {!effectiveAttended && onCancelRegistration && (
+            <div className="pt-2 pb-1 text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  onCancelRegistration();
+                }}
+                className="text-[11px] text-rose-400 hover:text-rose-300 font-mono hover:underline inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <XCircle className="w-3.5 h-3.5" />
+                <span>Cancel Registration &amp; Revoke Pass</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Footer Actions */}

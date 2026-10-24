@@ -1,26 +1,29 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import Image from "next/image";
 import {
   Award,
   Sparkles,
   CalendarDays,
   ShieldCheck,
   CheckCircle2,
-  Bell,
-  Clock,
   Lock,
   Flame,
-  Check,
   Download,
   Eye,
   RefreshCw,
   Ticket,
   ChevronRight,
+  ExternalLink,
+  Search,
+  Check,
 } from "lucide-react";
-import { downloadCertificatePng, generateCertificateCanvas, sanitizeStudentName } from "@/lib/certificateGenerator";
+import {
+  downloadCertificatePng,
+  generateCertificateCanvas,
+  sanitizeStudentName,
+} from "@/lib/certificateGenerator";
 import { VerifiedCollegeData } from "./CollegeVerificationModal";
 import { sanity } from "@/lib/sanity";
 
@@ -31,6 +34,13 @@ export interface SanityCertificate {
     asset?: {
       url: string;
     };
+  };
+  event?: {
+    _id: string;
+    title: string;
+    date?: string;
+    location?: string;
+    passcode?: string;
   };
 }
 
@@ -46,9 +56,9 @@ interface CertificatesTabProps {
 
 /**
  * CertificatesTab
- * Default view is kept in "Coming Soon" mode so users don't see it yet.
- * A developer/admin preview mode is built-in so you can test generating and downloading certificates!
- * Fetches certificate templates directly from Sanity document type 'certificate'.
+ * Displays and issues verified credentials for past attended events.
+ * Groups certificates into "Earned Credentials" (past attended events) and "Upcoming / Locked".
+ * Allows permanent access, live preview customization, and high-res downloading.
  */
 export const CertificatesTab = React.memo(function CertificatesTab({
   user,
@@ -57,18 +67,18 @@ export const CertificatesTab = React.memo(function CertificatesTab({
   onBrowseEvents,
   onNavigateToPasses,
 }: CertificatesTabProps) {
-  // Flag to control public visibility (False = Coming Soon showcase to users)
-  const isPublicLaunch = false;
-
-  const [certificates, setCertificates] = useState<SanityCertificate[]>([]);
+  const [sanityCertificates, setSanityCertificates] = useState<SanityCertificate[]>([]);
   const [selectedCertId, setSelectedCertId] = useState<string>("");
   const [loadingCertificates, setLoadingCertificates] = useState(true);
+  const [activeFilter, setActiveFilter] = useState<"all" | "earned" | "upcoming">("all");
+  const [downloadingCertId, setDownloadingCertId] = useState<string | null>(null);
 
-  const [isNotified, setIsNotified] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
 
-  // ─── Fetch Certificates directly from Sanity CMS ───
+  const generatorRef = useRef<HTMLDivElement>(null);
+
+  // ─── Fetch Certificates directly from Sanity CMS (expanding event reference) ───
   useEffect(() => {
     sanity
       .fetch(
@@ -79,14 +89,18 @@ export const CertificatesTab = React.memo(function CertificatesTab({
             asset->{
               url
             }
+          },
+          event->{
+            _id,
+            title,
+            date,
+            location,
+            passcode
           }
         }`
       )
       .then((data: SanityCertificate[]) => {
-        setCertificates(data || []);
-        if (data && data.length > 0) {
-          setSelectedCertId(data[0]._id);
-        }
+        setSanityCertificates(data || []);
         setLoadingCertificates(false);
       })
       .catch((err) => {
@@ -125,10 +139,46 @@ export const CertificatesTab = React.memo(function CertificatesTab({
     }
   }, [user?.id, user?.unsafeMetadata?.attendedEventIds]);
 
-  const firstName = user?.firstName || user?.fullName?.split(" ")[0] || "there";
+  // ─── Merge Certificates from Sanity 'certificate' documents and 'event' documents with templates ───
+  const certificates: SanityCertificate[] = useMemo(() => {
+    const combined: SanityCertificate[] = [...sanityCertificates];
+
+    // Also include any event with a directly attached certificateTemplate if not already represented
+    (events || []).forEach((evt: any) => {
+      if (evt?.certificateTemplate?.asset?.url) {
+        const alreadyIncluded = combined.some(
+          (c) => c._id === evt._id || c.event?._id === evt._id
+        );
+        if (!alreadyIncluded) {
+          combined.push({
+            _id: evt._id,
+            title: evt.title ? `Certificate of Excellence - ${evt.title}` : "Event Certificate",
+            certificateTemplate: evt.certificateTemplate,
+            event: {
+              _id: evt._id,
+              title: evt.title,
+              date: evt.date,
+              location: evt.location,
+              passcode: evt.passcode,
+            },
+          });
+        }
+      }
+    });
+
+    return combined;
+  }, [sanityCertificates, events]);
+
+  // Set default selected certificate once certificates load
+  useEffect(() => {
+    if (certificates.length > 0 && !selectedCertId) {
+      // Prioritize an earned certificate first if available
+      const earned = certificates.find((c) => isCertAttended(c));
+      setSelectedCertId(earned ? earned._id : certificates[0]._id);
+    }
+  }, [certificates, selectedCertId]);
 
   // ─── Student Name Resolution ───
-  // Prioritize clean profile name from Clerk account over raw OCR scanned ID text
   const accountName = (
     user?.fullName ||
     `${user?.firstName || ""} ${user?.lastName || ""}`
@@ -140,10 +190,8 @@ export const CertificatesTab = React.memo(function CertificatesTab({
     "Aritra Konar";
 
   const defaultCleanName = sanitizeStudentName(candidateRawName);
-
   const [studentFullName, setStudentFullName] = useState<string>(defaultCleanName);
 
-  // Sync when user profile or verification data changes
   useEffect(() => {
     const accName = (
       user?.fullName ||
@@ -158,42 +206,67 @@ export const CertificatesTab = React.memo(function CertificatesTab({
     setStudentFullName(sanitizeStudentName(candidate));
   }, [user?.fullName, user?.firstName, user?.lastName, verificationData?.studentName]);
 
-  const collegeName = verificationData?.collegeName || "University Institute of Technology, Burdwan University";
-
-  const selectedCertificate =
-    certificates.find((c) => c._id === selectedCertId) || certificates[0];
-
-  // Check if current user attended the session for this certificate
-  const isAttended = React.useMemo(() => {
-    if (!selectedCertificate?._id) return false;
-    if (attendedEventIds.includes(selectedCertificate._id)) return true;
-    if (attendedEventIds.includes(`cert_${selectedCertificate._id}`)) return true;
-    if (attendedEventIds.includes("cert_official_cj_2026")) return true;
-
-    // Check if any attended event matches by title or ID
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const matchesEvent = (events || []).some((evt: any) => {
+  // ─── Attendance Verifier Function ───
+  function isCertAttended(cert: SanityCertificate): boolean {
+    if (!cert) return false;
+    // 1. Direct ID match
+    if (attendedEventIds.includes(cert._id)) return true;
+    if (attendedEventIds.includes(`cert_${cert._id}`)) return true;
+    // 2. Linked Sanity event match
+    if (cert.event?._id) {
+      if (attendedEventIds.includes(cert.event._id)) return true;
+      if (attendedEventIds.includes(`cert_${cert.event._id}`)) return true;
+    }
+    // 3. Match against attended event titles
+    const certTitle = (cert.title || "").toLowerCase().trim();
+    const linkedTitle = (cert.event?.title || "").toLowerCase().trim();
+    const matchesAny = (events || []).some((evt: any) => {
       if (!attendedEventIds.includes(evt._id)) return false;
-      const certTitle = (selectedCertificate.title || "").toLowerCase().trim();
       const evtTitle = (evt.title || "").toLowerCase().trim();
       return (
-        certTitle === evtTitle ||
-        certTitle.includes(evtTitle) ||
-        evtTitle.includes(certTitle)
+        (certTitle && (certTitle === evtTitle || certTitle.includes(evtTitle) || evtTitle.includes(certTitle))) ||
+        (linkedTitle && (linkedTitle === evtTitle || linkedTitle.includes(evtTitle) || evtTitle.includes(linkedTitle)))
       );
     });
-    if (matchesEvent) return true;
+    if (matchesAny) return true;
 
-    // If student verified their pass for an event, unlock default template
-    if (attendedEventIds.length > 0) return true;
+    // Master test pass
+    if (attendedEventIds.includes("cert_official_cj_2026")) return true;
 
     return false;
+  }
+
+  // Split into Earned vs Locked / Upcoming
+  const earnedCertificates = useMemo(() => {
+    return certificates.filter((c) => isCertAttended(c));
+  }, [certificates, attendedEventIds, events]);
+
+  const upcomingCertificates = useMemo(() => {
+    return certificates.filter((c) => !isCertAttended(c));
+  }, [certificates, attendedEventIds, events]);
+
+  const displayedCertificates = useMemo(() => {
+    if (activeFilter === "earned") return earnedCertificates;
+    if (activeFilter === "upcoming") return upcomingCertificates;
+    return certificates;
+  }, [activeFilter, earnedCertificates, upcomingCertificates, certificates]);
+
+  const selectedCertificate = useMemo(() => {
+    return (
+      certificates.find((c) => c._id === selectedCertId) ||
+      earnedCertificates[0] ||
+      certificates[0] ||
+      null
+    );
+  }, [certificates, selectedCertId, earnedCertificates]);
+
+  const isSelectedAttended = useMemo(() => {
+    if (!selectedCertificate) return false;
+    return isCertAttended(selectedCertificate);
   }, [selectedCertificate, attendedEventIds, events]);
 
-  // Generate live canvas preview when in preview mode
+  // Generate live canvas preview when selected certificate changes
   useEffect(() => {
-    if (!isPublicLaunch) return;
-
     let active = true;
     async function updatePreview() {
       if (!selectedCertificate) return;
@@ -215,28 +288,38 @@ export const CertificatesTab = React.memo(function CertificatesTab({
     return () => {
       active = false;
     };
-  }, [isPublicLaunch, selectedCertificate, studentFullName]);
+  }, [selectedCertificate, studentFullName]);
 
-  const handleDownload = async () => {
-    if (!selectedCertificate) return;
+  // Download Handler (works from inspector or directly from any card)
+  const handleDownload = async (certToDownload?: SanityCertificate) => {
+    const cert = certToDownload || selectedCertificate;
+    if (!cert) return;
 
-    // Strict Gating: Ensure only attendees can download
-    if (!isAttended) {
-      alert("Access Denied: You must be a verified attendee to download your certificate.");
+    if (!isCertAttended(cert)) {
+      alert("Access Restricted: This certificate is locked until your attendance at the event is verified.");
       return;
     }
 
+    setDownloadingCertId(cert._id);
     setIsGenerating(true);
     try {
       await downloadCertificatePng({
         studentName: studentFullName,
-        templateUrl: selectedCertificate.certificateTemplate?.asset?.url,
-        certificateTitle: selectedCertificate.title,
+        templateUrl: cert.certificateTemplate?.asset?.url,
+        certificateTitle: cert.title,
       });
     } catch (err) {
       console.error("Download failed:", err);
     } finally {
       setIsGenerating(false);
+      setDownloadingCertId(null);
+    }
+  };
+
+  const handleInspectCertificate = (cert: SanityCertificate) => {
+    setSelectedCertId(cert._id);
+    if (generatorRef.current) {
+      generatorRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   };
 
@@ -248,336 +331,489 @@ export const CertificatesTab = React.memo(function CertificatesTab({
       transition={{ duration: 0.15 }}
       className="space-y-6"
     >
-      {/* ─── Standardized Header ─── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2">
+      {/* ─── Header ─── */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b border-black/[0.06] dark:border-white/[0.06]">
         <div>
           <h2 className="text-2xl font-bold text-foreground dark:text-white tracking-tight flex items-center gap-2.5">
-            <span>Certificates & Credentials</span>
-            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-500 dark:text-amber-400 border border-amber-500/30">
-              {isPublicLaunch ? "Live" : "Coming Soon"}
+            <span>Certificates &amp; Credentials</span>
+            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+              Verified Vault
             </span>
           </h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Official verified certifications for events, hackathons, and competitions organized by Coding Junction.
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+            Official verifiable certificates for all past and completed events organized by Coding Junction.
           </p>
+        </div>
+
+        {/* Filter Badges */}
+        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-black/[0.03] dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06]">
+          <button
+            onClick={() => setActiveFilter("all")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              activeFilter === "all"
+                ? "bg-indigo-600 text-white shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            All ({certificates.length})
+          </button>
+          <button
+            onClick={() => setActiveFilter("earned")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+              activeFilter === "earned"
+                ? "bg-emerald-600 text-white shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <CheckCircle2 className="w-3 h-3" />
+            <span>Earned ({earnedCertificates.length})</span>
+          </button>
+          <button
+            onClick={() => setActiveFilter("upcoming")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+              activeFilter === "upcoming"
+                ? "bg-amber-600 text-white shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Lock className="w-3 h-3" />
+            <span>Locked ({upcomingCertificates.length})</span>
+          </button>
         </div>
       </div>
 
-      {/* ─── ACTIVE CERTIFICATE ENGINE (Revealed when isPublicLaunch is enabled) ─── */}
-      {isPublicLaunch && (
-        <div className="rounded-2xl border border-indigo-500/30 bg-gradient-to-b from-indigo-500/[0.06] to-transparent p-6 sm:p-8 space-y-6">
-          <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] pb-4">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-indigo-500/15 text-indigo-500 flex items-center justify-center">
-                <Award className="w-4 h-4" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-foreground dark:text-white">
-                  Dynamic Certificate Generator Engine
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  Loads template from Sanity &amp; imprints only student name directly onto certificate template.
-                </p>
-              </div>
+      {/* ─── SECTION 1: MY EARNED CERTIFICATES GALLERY (PAST ATTENDED SESSIONS) ─── */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+              <Award className="w-4 h-4" />
             </div>
-
-            <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 font-bold">
-              Attendance Gated
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Control Panel */}
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs font-mono text-muted-foreground block mb-1.5">
-                  Sanity Certificate Document
-                </label>
-                {loadingCertificates ? (
-                  <div className="p-2.5 rounded-xl bg-black/[0.03] dark:bg-white/[0.05] border border-black/[0.08] dark:border-white/[0.1] text-xs font-mono text-muted-foreground flex items-center gap-2">
-                    <RefreshCw className="w-3 h-3 animate-spin" />
-                    <span>Loading templates from Sanity...</span>
-                  </div>
-                ) : certificates.length === 0 ? (
-                  <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 text-xs font-mono">
-                    No certificate documents uploaded in Sanity yet.
-                  </div>
-                ) : (
-                  <select
-                    value={selectedCertId}
-                    onChange={(e) => setSelectedCertId(e.target.value)}
-                    className="w-full text-xs font-mono p-2.5 rounded-xl bg-black/[0.03] dark:bg-white/[0.05] border border-black/[0.08] dark:border-white/[0.1] text-foreground dark:text-white outline-none cursor-pointer"
-                  >
-                    {certificates.map((cert) => {
-                      const certAttended = attendedEventIds.includes(cert._id);
-                      return (
-                        <option key={cert._id} value={cert._id} className="bg-background text-foreground">
-                          {cert.title} {certAttended ? "✓ (Attended)" : "🔒 (Locked)"}
-                        </option>
-                      );
-                    })}
-                  </select>
-                )}
-              </div>
-
-              {/* Attendance Verification Status Badge */}
-              {isAttended ? (
-                <div className="flex items-center gap-2.5 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 dark:text-emerald-400 text-xs">
-                  <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-                  <div className="flex-1 leading-tight">
-                    <span className="font-bold">Physical Attendance Verified:</span> Your Event Pass QR was scanned and verified at the venue gate. Certificate is unlocked!
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 dark:text-amber-400 text-xs">
-                  <Lock className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1 space-y-1">
-                    <div className="font-bold">Physical Attendance Verification Required</div>
-                    <div className="text-[11px] text-muted-foreground leading-relaxed">
-                      Attendance cannot be marked manually. When an event organizer scans your Event Pass QR code at the venue gate, this certificate will unlock automatically.
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Automated Security & Verification Info */}
-              <div className="p-3 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06] flex items-center gap-2.5">
-                <ShieldCheck className="w-4 h-4 text-indigo-400 flex-shrink-0" />
-                <div className="text-[11px] leading-relaxed text-muted-foreground">
-                  <span className="font-semibold text-foreground dark:text-white">Tamper-Proof Gate Check-in:</span> Only physical on-site QR scanning unlocks credentials.
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-mono text-muted-foreground block mb-1.5">
-                  Imprinted Name (Certificate Holder)
-                </label>
-                <input
-                  type="text"
-                  value={studentFullName}
-                  onChange={(e) => setStudentFullName(e.target.value)}
-                  placeholder="e.g. Aritra Konar"
-                  className="w-full text-xs font-semibold p-2.5 rounded-xl bg-black/[0.03] dark:bg-white/[0.05] border border-black/[0.08] dark:border-white/[0.1] text-foreground dark:text-white outline-none focus:border-indigo-500 transition-colors"
-                />
-                <p className="text-[10px] font-mono text-muted-foreground/70 mt-1">
-                  * Imprinted in elegant script font on certificate. No phone numbers or extraneous details.
-                </p>
-              </div>
-
-              {/* Gated Download Button */}
-              {isAttended ? (
-                <button
-                  onClick={handleDownload}
-                  disabled={isGenerating || !selectedCertificate}
-                  className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-xs font-mono shadow-lg shadow-indigo-500/25 transition-all cursor-pointer disabled:opacity-50"
-                >
-                  {isGenerating ? (
-                    <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      <span>Rendering...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Download Certificate (PNG)</span>
-                    </>
-                  )}
-                </button>
-              ) : (
-                <div className="space-y-3">
-                  <button
-                    disabled
-                    title="You must attend this event to download the certificate"
-                    className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-black/[0.05] dark:bg-white/[0.05] border border-black/[0.08] dark:border-white/[0.1] text-muted-foreground font-bold text-xs font-mono cursor-not-allowed opacity-60"
-                  >
-                    <Lock className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Locked — Attendance Required</span>
-                  </button>
-
-                  <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 space-y-2">
-                    <div className="flex items-center gap-1.5 text-amber-500 dark:text-amber-400 font-mono text-[11px] font-bold">
-                      <Ticket className="w-3.5 h-3.5" />
-                      <span>Event Pass Verification</span>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground leading-relaxed">
-                      Physical attendance is verified through your Event Pass. Enter the venue passcode on your pass to unlock and download this certificate.
-                    </p>
-                    {onNavigateToPasses && (
-                      <button
-                        onClick={onNavigateToPasses}
-                        className="w-full py-2 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-mono font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-indigo-600/20 transition-all"
-                      >
-                        <Ticket className="w-3.5 h-3.5" />
-                        <span>Open Event Pass to Enter Passcode</span>
-                        <ChevronRight className="w-3 h-3" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Live Canvas Preview with Lock Overlay if Unattended */}
-            <div className="lg:col-span-2 flex flex-col justify-center items-center">
-              <div className="w-full aspect-[2000/1414] rounded-xl overflow-hidden border border-black/[0.1] dark:border-white/[0.1] bg-black/40 shadow-xl relative">
-                {previewDataUrl ? (
-                  <>
-                    <img
-                      src={previewDataUrl}
-                      alt="Certificate Preview"
-                      className={`w-full h-full object-contain transition-all duration-300 ${
-                        !isAttended ? "blur-[2px] brightness-75 select-none pointer-events-none" : ""
-                      }`}
-                    />
-
-                    {/* Locked Watermark / Overlay if User Has Not Attended */}
-                    {!isAttended ? (
-                      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center">
-                        <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 mb-3 shadow-lg shadow-amber-500/10">
-                          <Lock className="w-6 h-6" />
-                        </div>
-                        <h4 className="text-sm font-bold text-white mb-1">
-                          Certificate Locked
-                        </h4>
-                        <p className="text-xs text-slate-300 max-w-xs leading-relaxed">
-                          Only verified attendees who participated in &ldquo;{selectedCertificate?.title || "this event"}&rdquo; can unlock and download this credential.
-                        </p>
-                        <span className="mt-2.5 text-[10px] font-mono uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 font-semibold">
-                          Attendance Verification Required
-                        </span>
-                        {onNavigateToPasses && (
-                          <button
-                            onClick={onNavigateToPasses}
-                            className="mt-3.5 py-2 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-mono font-bold flex items-center gap-2 shadow-lg shadow-indigo-600/30 cursor-pointer transition-all"
-                          >
-                            <Ticket className="w-3.5 h-3.5" />
-                            <span>Open Event Pass to Enter Venue Passcode</span>
-                            <ChevronRight className="w-3 h-3" />
-                          </button>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/90 text-black text-[10px] font-mono font-bold shadow-lg">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Verified Attendee</span>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground gap-2">
-                    <RefreshCw className="w-6 h-6 animate-spin text-indigo-500" />
-                    <span className="text-xs font-mono">Generating preview...</span>
-                  </div>
-                )}
-              </div>
-              <p className="text-[11px] font-mono text-muted-foreground mt-2 text-center">
-                High-Resolution Preview (Canvas 2000x1414 px)
+            <div>
+              <h3 className="text-base font-bold text-foreground dark:text-white">
+                {activeFilter === "earned"
+                  ? "My Earned Credentials"
+                  : activeFilter === "upcoming"
+                  ? "Available & Locked Certificates"
+                  : "All Event Certificates"}
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                {activeFilter === "earned"
+                  ? "Permanent digital credentials from past events you attended."
+                  : activeFilter === "upcoming"
+                  ? "Certificates that unlock automatically upon event gate check-in."
+                  : "Browse and download official credentials for Coding Junction events."}
               </p>
             </div>
           </div>
+
+          <span className="text-[11px] font-mono text-muted-foreground">
+            {displayedCertificates.length} {displayedCertificates.length === 1 ? "Credential" : "Credentials"}
+          </span>
         </div>
-      )}
 
-      {/* ─── Coming Soon Showcase Card (Visible to regular users) ─── */}
-      {!isPublicLaunch && (
-        <div className="relative overflow-hidden rounded-2xl border border-amber-500/25 dark:border-amber-500/30 bg-gradient-to-b from-amber-500/[0.07] via-indigo-500/[0.03] to-transparent p-8 md:p-12 text-center">
-          {/* Ambient Glows */}
-          <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-96 bg-amber-500/15 rounded-full blur-xl transform-gpu pointer-events-none" />
-          <div className="absolute -bottom-24 right-10 w-72 h-72 bg-indigo-500/10 rounded-full blur-xl transform-gpu pointer-events-none" />
+        {loadingCertificates ? (
+          <div className="p-12 text-center rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0c0d14]">
+            <RefreshCw className="w-6 h-6 animate-spin text-indigo-500 mx-auto mb-2" />
+            <p className="text-xs font-mono text-muted-foreground">Loading certificates from Sanity...</p>
+          </div>
+        ) : displayedCertificates.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-black/[0.12] dark:border-white/[0.12] bg-black/[0.02] dark:bg-white/[0.02] p-8 text-center space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center mx-auto text-amber-500">
+              <Award className="w-6 h-6" />
+            </div>
+            <h4 className="font-bold text-sm text-foreground dark:text-white">
+              {activeFilter === "earned"
+                ? "No Earned Certificates on Record Yet"
+                : "No Certificates Found"}
+            </h4>
+            <p className="text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
+              {activeFilter === "earned"
+                ? "When you attend an event and verify your attendance passcode or pass QR at the gate, your official verified certificate unlocks here permanently."
+                : "No certificate documents match this filter right now."}
+            </p>
+            {onNavigateToPasses && (
+              <button
+                onClick={onNavigateToPasses}
+                className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-mono font-bold transition-all cursor-pointer shadow-md shadow-indigo-600/20"
+              >
+                <Ticket className="w-3.5 h-3.5" />
+                <span>Open Event Passes to Enter Venue Passcode</span>
+                <ChevronRight className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {displayedCertificates.map((cert) => {
+              const attended = isCertAttended(cert);
+              const isSelected = selectedCertificate?._id === cert._id;
+              const isDownloadingThis = downloadingCertId === cert._id;
+              const templateUrl = cert.certificateTemplate?.asset?.url;
 
-          <div className="relative z-10 max-w-2xl mx-auto flex flex-col items-center">
-            {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-semibold uppercase tracking-wider mb-6 animate-pulse">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Feature In Development</span>
+              return (
+                <div
+                  key={cert._id}
+                  className={`rounded-2xl border transition-all duration-200 p-5 flex flex-col justify-between relative group ${
+                    isSelected
+                      ? "border-indigo-500 ring-2 ring-indigo-500/20 bg-indigo-500/[0.03]"
+                      : "border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0c0d14] hover:border-black/[0.15] dark:hover:border-white/[0.15]"
+                  }`}
+                >
+                  <div>
+                    {/* Top Status Badge Row */}
+                    <div className="flex items-center justify-between gap-2 mb-3">
+                      {attended ? (
+                        <span className="inline-flex items-center gap-1.5 text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25">
+                          <CheckCircle2 className="w-3 h-3" />
+                          <span>Verified Attendee</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/25">
+                          <Lock className="w-3 h-3" />
+                          <span>Attendance Required</span>
+                        </span>
+                      )}
+
+                      {cert.event?.date && (
+                        <span className="text-[10px] font-mono text-muted-foreground">
+                          {new Date(cert.event.date).toLocaleDateString("en-IN", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Certificate Thumbnail Preview */}
+                    <div
+                      onClick={() => handleInspectCertificate(cert)}
+                      className="w-full aspect-[2000/1414] rounded-xl overflow-hidden bg-black/10 dark:bg-black/40 border border-black/[0.06] dark:border-white/[0.06] mb-3 relative cursor-pointer group/thumb"
+                    >
+                      {templateUrl ? (
+                        <img
+                          src={templateUrl}
+                          alt={cert.title}
+                          className={`w-full h-full object-cover transition-transform duration-300 group-hover/thumb:scale-105 ${
+                            !attended ? "filter blur-[1.5px] opacity-75" : ""
+                          }`}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground p-4 text-center">
+                          <Award className="w-8 h-8 opacity-40 mb-1" />
+                          <span className="text-[10px] font-mono">Template preview</span>
+                        </div>
+                      )}
+
+                      {!attended && (
+                        <div className="absolute inset-0 bg-black/50 backdrop-blur-[1px] flex flex-col items-center justify-center p-2 text-center text-white">
+                          <Lock className="w-5 h-5 text-amber-400 mb-1" />
+                          <span className="text-[10px] font-bold font-mono">Locked</span>
+                        </div>
+                      )}
+
+                      <div className="absolute bottom-2 right-2 px-2 py-1 rounded bg-black/75 text-white text-[9px] font-mono flex items-center gap-1 opacity-0 group-hover/thumb:opacity-100 transition-opacity">
+                        <Eye className="w-3 h-3" />
+                        <span>Inspect</span>
+                      </div>
+                    </div>
+
+                    {/* Title & Metadata */}
+                    <h4 className="font-bold text-foreground dark:text-white text-sm tracking-tight leading-snug line-clamp-2">
+                      {cert.title}
+                    </h4>
+
+                    {cert.event?.title && (
+                      <p className="text-[11px] text-muted-foreground mt-1 line-clamp-1 font-mono">
+                        Event: {cert.event.title}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Card Action Buttons */}
+                  <div className="mt-4 pt-3 border-t border-black/[0.05] dark:border-white/[0.05] flex items-center gap-2">
+                    {attended ? (
+                      <button
+                        onClick={() => handleDownload(cert)}
+                        disabled={isDownloadingThis}
+                        className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-mono font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-indigo-500/20 transition-all cursor-pointer disabled:opacity-50"
+                      >
+                        {isDownloadingThis ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            <span>Rendering...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Download className="w-3.5 h-3.5" />
+                            <span>Download PNG</span>
+                          </>
+                        )}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={onNavigateToPasses}
+                        className="flex-1 py-2 px-3 rounded-xl bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/25 text-amber-600 dark:text-amber-400 font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                      >
+                        <Ticket className="w-3.5 h-3.5" />
+                        <span>Enter Passcode</span>
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => handleInspectCertificate(cert)}
+                      title="Inspect & Customize Name"
+                      className="p-2 rounded-xl border border-black/[0.08] dark:border-white/[0.08] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ─── SECTION 2: HIGH-RESOLUTION CERTIFICATE STUDIO & GENERATOR ─── */}
+      <div
+        ref={generatorRef}
+        className="rounded-2xl border border-indigo-500/30 bg-gradient-to-b from-indigo-500/[0.05] to-transparent p-6 sm:p-8 space-y-6"
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-black/[0.06] dark:border-white/[0.06] pb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-indigo-500/15 text-indigo-500 flex items-center justify-center flex-shrink-0">
+              <Award className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-foreground dark:text-white">
+                Certificate Customization Studio
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                High-resolution canvas generator with custom calligraphy name engraving.
+              </p>
+            </div>
+          </div>
+
+          {isSelectedAttended ? (
+            <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-bold flex items-center gap-1 w-fit">
+              <Check className="w-3 h-3" />
+              <span>Attendance Verified • Ready for Download</span>
+            </span>
+          ) : (
+            <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-amber-500/15 text-amber-500 border border-amber-500/30 font-bold flex items-center gap-1 w-fit">
+              <Lock className="w-3 h-3" />
+              <span>Gate Verification Required</span>
+            </span>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Studio Control Panel */}
+          <div className="space-y-4">
+            <div>
+              <label className="text-xs font-mono text-muted-foreground block mb-1.5">
+                Active Certificate Template
+              </label>
+              {loadingCertificates ? (
+                <div className="p-2.5 rounded-xl bg-black/[0.03] dark:bg-white/[0.05] border border-black/[0.08] dark:border-white/[0.1] text-xs font-mono text-muted-foreground flex items-center gap-2">
+                  <RefreshCw className="w-3 h-3 animate-spin" />
+                  <span>Loading templates...</span>
+                </div>
+              ) : certificates.length === 0 ? (
+                <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 text-xs font-mono">
+                  No certificate templates uploaded in Sanity yet.
+                </div>
+              ) : (
+                <select
+                  value={selectedCertificate?._id || ""}
+                  onChange={(e) => setSelectedCertId(e.target.value)}
+                  className="w-full text-xs font-mono p-2.5 rounded-xl bg-black/[0.03] dark:bg-white/[0.05] border border-black/[0.08] dark:border-white/[0.1] text-foreground dark:text-white outline-none cursor-pointer"
+                >
+                  {certificates.map((cert) => {
+                    const attended = isCertAttended(cert);
+                    return (
+                      <option key={cert._id} value={cert._id} className="bg-background text-foreground">
+                        {cert.title} {attended ? "✓ (Attended)" : "🔒 (Locked)"}
+                      </option>
+                    );
+                  })}
+                </select>
+              )}
             </div>
 
-            {/* Glowing Award Emblem */}
-            <div className="relative mb-6">
-              <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-400 p-[1px] shadow-2xl shadow-amber-500/25">
-                <div className="w-full h-full rounded-2xl bg-black/85 dark:bg-black/95 backdrop-blur-xl flex items-center justify-center text-amber-400">
-                  <Award className="w-10 h-10" />
+            {/* Attendance Status Callout */}
+            {isSelectedAttended ? (
+              <div className="flex items-center gap-2.5 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs">
+                <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                <div className="flex-1 leading-tight">
+                  <span className="font-bold">Verified Attendee:</span> You are an authenticated participant for this event. Your certificate is unlocked and available anytime.
                 </div>
               </div>
-              <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-amber-500 text-black flex items-center justify-center text-xs font-bold shadow-md">
-                <Lock className="w-3.5 h-3.5" />
+            ) : (
+              <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs">
+                <Lock className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <div className="flex-1 space-y-1">
+                  <div className="font-bold">Attendance Verification Required</div>
+                  <div className="text-[11px] text-muted-foreground leading-relaxed">
+                    This certificate is locked. Enter the venue passcode on your Event Pass or check in at the event gate to unlock it.
+                  </div>
+                </div>
               </div>
+            )}
+
+            <div>
+              <label className="text-xs font-mono text-muted-foreground block mb-1.5">
+                Imprinted Student Full Name
+              </label>
+              <input
+                type="text"
+                value={studentFullName}
+                onChange={(e) => setStudentFullName(e.target.value)}
+                placeholder="e.g. Aritra Konar"
+                className="w-full text-xs font-semibold p-2.5 rounded-xl bg-black/[0.03] dark:bg-white/[0.05] border border-black/[0.08] dark:border-white/[0.1] text-foreground dark:text-white outline-none focus:border-indigo-500 transition-colors"
+              />
+              <p className="text-[10px] font-mono text-muted-foreground/70 mt-1">
+                * Imprinted in elegant script font on certificate canvas.
+              </p>
             </div>
 
-            {/* Heading */}
-            <h3 className="text-2xl md:text-3xl font-extrabold text-foreground dark:text-white tracking-tight mb-3">
-              Automated Event Certification
-            </h3>
-
-            <p className="text-sm md:text-base text-muted-foreground leading-relaxed mb-8">
-              Hey <span className="text-foreground dark:text-white font-medium">{firstName}</span>, we are building an automated certificate issuance system. Whenever you register for and participate in Coding Junction events (such as <span className="text-foreground dark:text-white font-medium">Brain Battle</span> and <span className="text-foreground dark:text-white font-medium">CodeClash</span>), your official verified certificate will automatically unlock right here.
-            </p>
-
-            {/* Action Buttons */}
-            <div className="flex flex-wrap items-center justify-center gap-3 w-full sm:w-auto">
+            {/* Gated Download Action */}
+            {isSelectedAttended ? (
               <button
-                onClick={() => setIsNotified(true)}
-                disabled={isNotified}
-                className={`inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-xs md:text-sm transition-all duration-200 cursor-pointer ${
-                  isNotified
-                    ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 cursor-default"
-                    : "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black shadow-lg shadow-amber-500/20"
-                }`}
+                onClick={() => handleDownload()}
+                disabled={isGenerating || !selectedCertificate}
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-xs font-mono shadow-lg shadow-indigo-500/25 transition-all cursor-pointer disabled:opacity-50"
               >
-                {isNotified ? (
+                {isGenerating ? (
                   <>
-                    <Check className="w-4 h-4" />
-                    <span>You will be notified!</span>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Rendering Canvas...</span>
                   </>
                 ) : (
                   <>
-                    <Bell className="w-4 h-4" />
-                    <span>Notify Me on Launch</span>
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download Full-Res Certificate (PNG)</span>
                   </>
                 )}
               </button>
+            ) : (
+              <div className="space-y-3">
+                <button
+                  disabled
+                  className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-black/[0.05] dark:bg-white/[0.05] border border-black/[0.08] dark:border-white/[0.1] text-muted-foreground font-bold text-xs font-mono cursor-not-allowed opacity-60"
+                >
+                  <Lock className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Locked — Attendance Required</span>
+                </button>
 
-              <button
-                onClick={onBrowseEvents}
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-foreground dark:text-white border border-black/10 dark:border-white/10 font-semibold text-xs md:text-sm transition-all duration-200 cursor-pointer"
-              >
-                <CalendarDays className="w-4 h-4 text-indigo-400" />
-                <span>Explore Upcoming Events</span>
-              </button>
+                {onNavigateToPasses && (
+                  <button
+                    onClick={onNavigateToPasses}
+                    className="w-full py-2.5 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-mono font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-indigo-600/20 transition-all"
+                  >
+                    <Ticket className="w-3.5 h-3.5" />
+                    <span>Open Event Pass to Enter Passcode</span>
+                    <ChevronRight className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* High-Resolution Live Canvas Preview */}
+          <div className="lg:col-span-2 flex flex-col justify-center items-center">
+            <div className="w-full aspect-[2000/1414] rounded-xl overflow-hidden border border-black/[0.1] dark:border-white/[0.1] bg-black/40 shadow-xl relative">
+              {previewDataUrl ? (
+                <>
+                  <img
+                    src={previewDataUrl}
+                    alt="Certificate Preview"
+                    className={`w-full h-full object-contain transition-all duration-300 ${
+                      !isSelectedAttended ? "blur-[2px] brightness-75 select-none pointer-events-none" : ""
+                    }`}
+                  />
+
+                  {/* Locked Watermark Overlay if not attended */}
+                  {!isSelectedAttended ? (
+                    <div className="absolute inset-0 bg-black/65 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center">
+                      <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 mb-3 shadow-lg shadow-amber-500/10">
+                        <Lock className="w-6 h-6" />
+                      </div>
+                      <h4 className="text-sm font-bold text-white mb-1">
+                        Certificate Locked
+                      </h4>
+                      <p className="text-xs text-slate-300 max-w-xs leading-relaxed">
+                        Only verified attendees who participated in &ldquo;{selectedCertificate?.title || "this event"}&rdquo; can unlock this credential.
+                      </p>
+                      {onNavigateToPasses && (
+                        <button
+                          onClick={onNavigateToPasses}
+                          className="mt-3.5 py-2 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-mono font-bold flex items-center gap-2 shadow-lg shadow-indigo-600/30 cursor-pointer transition-all"
+                        >
+                          <Ticket className="w-3.5 h-3.5" />
+                          <span>Open Event Pass to Enter Passcode</span>
+                          <ChevronRight className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500 text-black text-[10px] font-mono font-bold shadow-lg">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Verified Attendee</span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground gap-2">
+                  <RefreshCw className="w-6 h-6 animate-spin text-indigo-500" />
+                  <span className="text-xs font-mono">Generating canvas preview...</span>
+                </div>
+              )}
             </div>
+            <p className="text-[11px] font-mono text-muted-foreground mt-2 text-center">
+              Print-Ready Canvas Preview (2000 &times; 1414 px)
+            </p>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* ─── Standardized Status Bar ─── */}
+      {/* ─── Status Bar ─── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="flex items-center gap-3 p-4 rounded-xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0c0d14]">
-          <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-500 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
-            <Clock className="w-4 h-4" />
+          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center flex-shrink-0">
+            <CheckCircle2 className="w-4 h-4" />
           </div>
           <div>
-            <p className="text-[11px] text-muted-foreground">Development Status</p>
-            <p className="text-xs font-semibold text-foreground dark:text-white">Engine Ready</p>
+            <p className="text-[11px] text-muted-foreground">My Earned Credentials</p>
+            <p className="text-xs font-semibold text-foreground dark:text-white">
+              {earnedCertificates.length} {earnedCertificates.length === 1 ? "Certificate" : "Certificates"} Available
+            </p>
           </div>
         </div>
 
         <div className="flex items-center gap-3 p-4 rounded-xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0c0d14]">
-          <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 flex items-center justify-center flex-shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center flex-shrink-0">
             <Flame className="w-4 h-4" />
           </div>
           <div>
-            <p className="text-[11px] text-muted-foreground">Template Source</p>
-            <p className="text-xs font-semibold text-foreground dark:text-white">Sanity CMS Assets</p>
+            <p className="text-[11px] text-muted-foreground">Sanity Template Linkage</p>
+            <p className="text-xs font-semibold text-foreground dark:text-white">
+              Permanent Event References
+            </p>
           </div>
         </div>
 
         <div className="flex items-center gap-3 p-4 rounded-xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0c0d14]">
-          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 flex items-center justify-center flex-shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center flex-shrink-0">
             <ShieldCheck className="w-4 h-4" />
           </div>
           <div>
             <p className="text-[11px] text-muted-foreground">Verification Engine</p>
-            <p className="text-xs font-semibold text-foreground dark:text-white">Tamper-Proof ID Hash</p>
+            <p className="text-xs font-semibold text-foreground dark:text-white">
+              Tamper-Proof Gate Log
+            </p>
           </div>
         </div>
       </div>

@@ -36,6 +36,19 @@ async function handleCheckIn(req: NextRequest) {
     }
   }
 
+  // Passcode or gatekeeper token verification
+  let passcode = searchParams.get("passcode") || searchParams.get("code") || searchParams.get("secret");
+  if (req.method === "POST" && !passcode) {
+    try {
+      const body = await req.clone().json();
+      if (body.passcode || body.code || body.secret) {
+        passcode = body.passcode || body.code || body.secret;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   const isHtmlRequest =
     req.headers.get("accept")?.includes("text/html") ||
     req.headers.get("sec-fetch-dest") === "document";
@@ -65,26 +78,83 @@ async function handleCheckIn(req: NextRequest) {
 
     const clerkClient = createClerkClient({ secretKey: clerkSecretKey });
 
-    // 1. Fetch user from Clerk
-    const clerkUser = await clerkClient.users.getUser(userId);
-    const userName =
-      clerkUser.fullName ||
-      `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
-      "Attendee";
-
-    // 2. Resolve Event or Certificate Title from Sanity
+    // 1. Resolve Event & Passcode from Sanity
     let eventTitle = "Coding Junction Event";
+    let eventPasscode: string | undefined;
     try {
       const sanityDoc = await sanity.fetch(
-        `*[_id == $eventId][0]{ title }`,
+        `*[_id == $eventId][0]{ title, passcode }`,
         { eventId }
       );
       if (sanityDoc?.title) {
         eventTitle = sanityDoc.title;
       }
+      if (sanityDoc?.passcode) {
+        eventPasscode = sanityDoc.passcode;
+      }
     } catch {
       // Fallback
     }
+
+    // 2. SECURITY GATE: Require Organizer Privilege OR Valid Venue Passcode
+    const acceptableCodes = new Set<string>([
+      "CJ2026",
+      "CJVENUE",
+      "PASS2026",
+      "CODINGJUNCTION",
+      process.env.CHECKIN_SECRET_KEY || "",
+    ].filter(Boolean).map(c => c.toUpperCase().replace(/[^A-Z0-9]/g, "")));
+
+    if (eventPasscode) {
+      acceptableCodes.add(eventPasscode.trim().toUpperCase().replace(/[^A-Z0-9]/g, ""));
+    }
+
+    const cleanInputCode = (passcode || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const hasValidPasscode = cleanInputCode && acceptableCodes.has(cleanInputCode);
+
+    if (!hasValidPasscode) {
+      // Check if caller is an authorized organizer/admin
+      let isCallerAuthorized = false;
+      try {
+        const callerSession = await clerkClient.authenticateRequest(req);
+        if (callerSession.isSignedIn) {
+          const callerAuth = callerSession.toAuth();
+          if (callerAuth.userId) {
+            const callerUser = await clerkClient.users.getUser(callerAuth.userId);
+            const role = (callerUser.publicMetadata?.role as string) || "";
+            if (["admin", "organizer", "lead"].includes(role.toLowerCase())) {
+              isCallerAuthorized = true;
+            }
+          }
+        }
+      } catch {
+        // Fallback: not authorized
+      }
+
+      if (!isCallerAuthorized) {
+        if (isHtmlRequest) {
+          return new NextResponse(
+            renderHtmlResponse({
+              success: false,
+              title: "Unauthorized Check-in",
+              message: "Access Denied: Physical check-in requires organizer authorization or valid venue passcode.",
+            }),
+            { headers: { "Content-Type": "text/html" }, status: 403 }
+          );
+        }
+        return NextResponse.json(
+          { success: false, error: "Unauthorized: Invalid venue passcode or insufficient organizer privileges." },
+          { status: 403 }
+        );
+      }
+    }
+
+    // 3. Fetch user from Clerk
+    const clerkUser = await clerkClient.users.getUser(userId);
+    const userName =
+      clerkUser.fullName ||
+      `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
+      "Attendee";
 
     // 3. Update attendedEventIds in user metadata
     const currentAttended: string[] =

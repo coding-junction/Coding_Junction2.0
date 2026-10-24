@@ -48,29 +48,23 @@ const Event = () => {
     };
   }, [user]);
 
-  // If a user clicked register while logged out, automatically claim the pass once signed in
+  // If a user clicked register while logged out, automatically redirect to dashboard once signed in
   useEffect(() => {
     if (isSignedIn && user) {
       try {
         const pendingEventId = sessionStorage.getItem("cj_pending_event_register");
-        const pendingLink = sessionStorage.getItem("cj_pending_event_link");
         if (pendingEventId) {
           sessionStorage.removeItem("cj_pending_event_register");
           sessionStorage.removeItem("cj_pending_event_link");
-          registerForEvent(pendingEventId, user).then(() => {
-            setRegisteredIds((prev) => Array.from(new Set([...prev, pendingEventId])));
-          });
-          if (pendingLink) {
-            window.open(pendingLink, "_blank", "noopener,noreferrer");
-          }
+          router.push(`/Dashboard?tab=events&registerEventId=${pendingEventId}`);
         }
       } catch {
         // Ignore session storage errors
       }
     }
-  }, [isSignedIn, user]);
+  }, [isSignedIn, user, router]);
 
-  const handleRegisterClick = async (event: EventType) => {
+  const handleRegisterClick = (event: EventType) => {
     // Strictly require authentication before registering
     if (!isSignedIn || !user) {
       if (typeof window !== "undefined") {
@@ -79,18 +73,12 @@ const Event = () => {
           sessionStorage.setItem("cj_pending_event_link", event.registerLink);
         }
       }
-      router.push(`/sign-in?redirect_url=${encodeURIComponent(window.location.href)}`);
+      router.push(`/sign-in?redirect_url=${encodeURIComponent(`/Dashboard?tab=events&registerEventId=${event._id}`)}`);
       return;
     }
 
-    // 1. Immediately generate the digital Event Pass
-    await registerForEvent(event._id, user);
-    setRegisteredIds((prev) => Array.from(new Set([...prev, event._id])));
-
-    // 2. Open official registration form in a new tab
-    if (event.registerLink) {
-      window.open(event.registerLink, "_blank", "noopener,noreferrer");
-    }
+    // Redirect to Dashboard with events tab and event ID
+    router.push(`/Dashboard?tab=events&registerEventId=${event._id}`);
   };
 
   useEffect(() => {
@@ -254,61 +242,58 @@ const Event = () => {
 
                   if (isRegistered) {
                     return (
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap items-center justify-center gap-3">
                         <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-mono font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25">
                           <Check className="w-3.5 h-3.5" />
-                          Registered
+                          Registered ✓
                         </span>
+                        <button
+                          onClick={() => router.push("/Dashboard")}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/25 transition-colors cursor-pointer"
+                        >
+                          <Ticket className="h-3.5 w-3.5" />
+                          <span>View Digital Pass</span>
+                        </button>
                         {event.registerLink && (
                           <a
                             href={event.registerLink}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-xs text-indigo-500 hover:text-indigo-600 font-medium underline underline-offset-4"
+                            className="text-xs text-muted-foreground hover:text-foreground font-medium underline underline-offset-4"
                           >
-                            View Form ↗
+                            External Form ↗
                           </a>
                         )}
                       </div>
                     );
                   }
 
-                  if (event.registerLink) {
-                    if (isLoaded && !isSignedIn) {
-                      return (
-                        <div className="flex flex-col items-center gap-2">
-                          <button
-                            onClick={() => handleRegisterClick(event)}
-                            className="group/btn inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-semibold text-sm shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:from-indigo-500 hover:to-violet-500 transition-all duration-300 cursor-pointer active:scale-[0.98]"
-                          >
-                            <LogIn className="h-4 w-4 text-indigo-200" />
-                            <span>Sign In / Sign up to Register</span>
-                            <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
-                          </button>
-                          <span className="text-[11px] text-muted-foreground font-mono">
-                            Free sign-in / sign-up required to register for event
-                          </span>
-                        </div>
-                      );
-                    }
-
+                  if (isLoaded && !isSignedIn) {
                     return (
-                      <button
-                        onClick={() => handleRegisterClick(event)}
-                        className="group/btn inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-semibold text-sm shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:from-indigo-500 hover:to-violet-500 transition-all duration-300 cursor-pointer active:scale-[0.98]"
-                      >
-                        <span>Register for Event</span>
-                        <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
-                      </button>
+                      <div className="flex flex-col items-center gap-2">
+                        <button
+                          onClick={() => handleRegisterClick(event)}
+                          className="group/btn inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-semibold text-sm shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:from-indigo-500 hover:to-violet-500 transition-all duration-300 cursor-pointer active:scale-[0.98]"
+                        >
+                          <LogIn className="h-4 w-4 text-indigo-200" />
+                          <span>Sign In to Register</span>
+                          <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
+                        </button>
+                        <span className="text-[11px] text-muted-foreground font-mono">
+                          Free sign-in required to issue admission pass
+                        </span>
+                      </div>
                     );
                   }
 
                   return (
                     <button
-                      disabled
-                      className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-gray-200 dark:bg-white/10 text-muted-foreground font-semibold text-sm cursor-not-allowed"
+                      onClick={() => handleRegisterClick(event)}
+                      className="group/btn inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-semibold text-sm shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:from-indigo-500 hover:to-violet-500 transition-all duration-300 cursor-pointer active:scale-[0.98]"
                     >
-                      Registration Closed
+                      <Ticket className="h-4 w-4" />
+                      <span>Register for Event</span>
+                      <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
                     </button>
                   );
                 })()}
