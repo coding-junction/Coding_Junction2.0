@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+export const dynamic = "force-dynamic";
+
+const getResendClient = () => {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return null;
+  return new Resend(apiKey);
+};
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,6 +17,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: "All fields are required." },
         { status: 400 }
+      );
+    }
+
+    const resend = getResendClient();
+    if (!resend) {
+      console.warn("RESEND_API_KEY is not configured. Skipping email dispatch.");
+      return NextResponse.json(
+        { success: true, message: "Message received (email notification skipped)." },
+        { status: 200 }
       );
     }
 
