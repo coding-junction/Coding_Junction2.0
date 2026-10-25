@@ -25,6 +25,7 @@ import { NotificationCenter } from "@/components/dashboard/NotificationCenter";
 import { registerForEvent, getRegisteredEventIds } from "@/lib/eventPass";
 import { EventRegistrationModal } from "@/components/events/EventRegistrationModal";
 import { AppPasswordModal } from "@/components/dashboard/AppPasswordModal";
+import { ShowcaseTab } from "@/components/dashboard/ShowcaseTab";
 
 /* ─── Types ─── */
 interface SanityEvent {
@@ -41,7 +42,7 @@ interface SanityEvent {
 }
 
 /* ─── Dashboard Tabs ─── */
-type TabKey = "overview" | "events" | "passes" | "leaderboard" | "certificates" | "profile" | "resources" | "settings";
+type TabKey = "overview" | "events" | "passes" | "projects" | "leaderboard" | "certificates" | "profile" | "resources" | "settings";
 
 /* ─── Standardized Nav Tabs ─── */
 const navTabs: {
@@ -53,6 +54,7 @@ const navTabs: {
     { key: "overview", label: "Overview", icon: LayoutDashboard },
     { key: "events", label: "Events", icon: CalendarDays },
     { key: "passes", label: "Event Passes", icon: Ticket },
+    { key: "projects", label: "Showcase", icon: Code2, badge: "New" },
     { key: "certificates", label: "Certificates", icon: Award },
     { key: "profile", label: "Profile", icon: UserCog },
     { key: "resources", label: "Resources", icon: BookOpen },
@@ -462,6 +464,9 @@ const DashboardMain = () => {
                 onNavigateToCertificates={() => setActiveTab("certificates")}
               />
             )}
+            {activeTab === "projects" && (
+              <ShowcaseTab key="projects" />
+            )}
             {activeTab === "leaderboard" && (
               <LeaderboardTab
                 key="leaderboard"
@@ -598,6 +603,7 @@ const OverviewTab = React.memo(function OverviewTab({
 
   const quickActions: QuickActionItem[] = [
     { icon: CalendarDays, label: "Browse Events", href: "/Events", gradient: "from-blue-500 to-indigo-500", description: "Explore past and upcoming events" },
+    ...(onNavigateTab ? [{ icon: Code2, label: "Showcase Project", onClick: () => onNavigateTab("projects"), gradient: "from-indigo-600 to-violet-600", description: "Submit your project to public showcase", badge: "New" }] : []),
     ...(onGoToPasses ? [{ icon: Ticket, label: "Event Passes", onClick: onGoToPasses, gradient: "from-indigo-500 to-violet-500", description: "Admission tickets & QR passes" }] : []),
     ...(onGoToCertificates ? [{ icon: Award, label: "Certificates", onClick: onGoToCertificates, gradient: "from-amber-500 to-orange-500", description: "Earned event credentials & vault" }] : []),
     { icon: Users, label: "Meet the Team", href: "/Team", gradient: "from-emerald-500 to-teal-500", description: "Connect with club members" },
@@ -920,6 +926,126 @@ const OverviewTab = React.memo(function OverviewTab({
                 </Link>
               );
             })}
+          </div>
+        </div>
+      </div>
+
+      {/* ─ Activity Feed & Skill Badges ─ */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        {/* Activity Feed */}
+        <div className="rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0c0d14] overflow-hidden shadow-sm">
+          <div className="flex items-center gap-2 p-5 border-b border-black/[0.06] dark:border-white/[0.06]">
+            <Clock className="h-4 w-4 text-indigo-500" />
+            <h3 className="font-semibold text-foreground dark:text-white text-sm">Activity Feed</h3>
+          </div>
+          <div className="p-5 space-y-4 max-h-[320px] overflow-y-auto scrollbar-hide">
+            {[
+              ...(verificationData?.isVerified
+                ? [{ icon: ShieldCheck, text: "College ID verified", sub: verificationData.collegeName || "Verified", time: verificationData.verifiedAt ? new Date(verificationData.verifiedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "Recently", color: "text-emerald-500", bg: "bg-emerald-500/10" }]
+                : []),
+              ...(registeredEventIds.length > 0
+                ? [{ icon: Ticket, text: `Registered for ${registeredEventIds.length} event${registeredEventIds.length > 1 ? "s" : ""}`, sub: "Digital passes issued", time: "Recent", color: "text-indigo-500", bg: "bg-indigo-500/10" }]
+                : []),
+              { icon: UserCog, text: "Profile created", sub: `Member since ${memberSince}`, time: memberSince.split(" ")[0] || "", color: "text-violet-500", bg: "bg-violet-500/10" },
+              { icon: Sparkles, text: "Joined Coding Junction", sub: "Welcome to the community!", time: memberSince.split(" ")[0] || "", color: "text-amber-500", bg: "bg-amber-500/10" },
+            ].map((item, i) => {
+              const Icon = item.icon;
+              return (
+                <div key={i} className="flex gap-3 relative">
+                  {i < 3 && <div className="absolute left-[15px] top-[32px] bottom-[-12px] w-px bg-black/[0.06] dark:bg-white/[0.06]" />}
+                  <div className={`w-[30px] h-[30px] rounded-lg flex items-center justify-center ${item.bg} flex-shrink-0 relative z-10`}>
+                    <Icon className={`h-3.5 w-3.5 ${item.color}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground dark:text-white">{item.text}</p>
+                    <p className="text-[11px] text-muted-foreground">{item.sub}</p>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground/70 flex-shrink-0">{item.time}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Skill Badges */}
+        <div className="rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0c0d14] overflow-hidden shadow-sm">
+          <div className="flex items-center gap-2 p-5 border-b border-black/[0.06] dark:border-white/[0.06]">
+            <Award className="h-4 w-4 text-amber-500" />
+            <h3 className="font-semibold text-foreground dark:text-white text-sm">Skill Badges</h3>
+          </div>
+          <div className="p-4 grid grid-cols-2 gap-3">
+            {[
+              {
+                emoji: "🎪",
+                title: "Event Explorer",
+                description: "Attend 3+ events",
+                progress: Math.min(registeredEventIds.length, 3),
+                total: 3,
+                earned: registeredEventIds.length >= 3,
+                gradient: "from-indigo-500 to-violet-500",
+              },
+              {
+                emoji: "✅",
+                title: "Verified Member",
+                description: "Verify college ID",
+                progress: verificationData?.isVerified ? 1 : 0,
+                total: 1,
+                earned: !!verificationData?.isVerified,
+                gradient: "from-emerald-500 to-teal-500",
+              },
+              {
+                emoji: "🏆",
+                title: "Hackathon Hero",
+                description: "Attend 5+ events",
+                progress: Math.min(registeredEventIds.length, 5),
+                total: 5,
+                earned: registeredEventIds.length >= 5,
+                gradient: "from-amber-500 to-orange-500",
+              },
+              {
+                emoji: "⭐",
+                title: "Community Star",
+                description: "Active for 6+ months",
+                progress: user?.createdAt ? Math.min(Math.floor((Date.now() - new Date(user.createdAt).getTime()) / (30 * 24 * 60 * 60 * 1000)), 6) : 0,
+                total: 6,
+                earned: user?.createdAt ? (Date.now() - new Date(user.createdAt).getTime()) > 6 * 30 * 24 * 60 * 60 * 1000 : false,
+                gradient: "from-rose-500 to-pink-500",
+              },
+            ].map((badge, i) => (
+              <div
+                key={i}
+                className={`relative rounded-xl border p-3 transition-all duration-200 ${
+                  badge.earned
+                    ? "border-amber-500/30 bg-amber-500/5 dark:bg-amber-500/10"
+                    : "border-black/[0.06] dark:border-white/[0.06] bg-black/[0.01] dark:bg-white/[0.02]"
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-lg">{badge.emoji}</span>
+                  <div className="min-w-0">
+                    <p className={`text-xs font-bold ${badge.earned ? "text-amber-600 dark:text-amber-400" : "text-foreground dark:text-white"}`}>
+                      {badge.title}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground truncate">{badge.description}</p>
+                  </div>
+                </div>
+                {/* Progress bar */}
+                <div className="w-full h-1.5 rounded-full bg-black/[0.06] dark:bg-white/[0.06] overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 bg-gradient-to-r ${badge.gradient}`}
+                    style={{ width: `${Math.round((badge.progress / badge.total) * 100)}%` }}
+                  />
+                </div>
+                <p className="text-[9px] text-muted-foreground mt-1 text-right font-mono">
+                  {badge.progress}/{badge.total}
+                </p>
+                {badge.earned && (
+                  <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center shadow-sm">
+                    <Check className="w-3 h-3 text-white" />
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       </div>

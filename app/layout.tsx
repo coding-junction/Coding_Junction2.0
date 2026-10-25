@@ -6,6 +6,8 @@ import Footer from '@/components/landing/footer';
 import { SplashScreen } from "@/components/ui/splash-screen";
 import NavBar from "@/components/landing/navbar";
 import ConditionalLayout from "@/components/ConditionalLayout";
+import { CommandPaletteWrapper } from "@/components/ui/command-palette-wrapper";
+import CjTerminal from "@/components/terminal/CjTerminal";
 import "./globals.css";
 
 // ClerkProvider requires NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY at render time.
@@ -121,6 +123,8 @@ export default function RootLayout({
         >
           <ClerkProvider>
             <SplashScreen />
+            <CommandPaletteWrapper />
+            <CjTerminal />
             <ConditionalLayout>
               <NavBar />
             </ConditionalLayout>

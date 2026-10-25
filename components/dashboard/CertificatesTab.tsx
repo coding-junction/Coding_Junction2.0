@@ -561,6 +561,17 @@ export const CertificatesTab = React.memo(function CertificatesTab({
                       </button>
                     )}
 
+                    {attended && (
+                      <a
+                        href={`/verify?id=${encodeURIComponent(`CJ-CERT-${cert._id.slice(-6).toUpperCase()}`)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Verify Credential on Public Ledger"
+                        className="p-2 rounded-xl border border-amber-500/25 bg-amber-500/5 hover:bg-amber-500/15 text-amber-500 transition-colors flex items-center justify-center"
+                      >
+                        <ShieldCheck className="w-4 h-4" />
+                      </a>
+                    )}
                     <button
                       onClick={() => handleInspectCertificate(cert)}
                       title="Inspect & Customize Name"
@@ -681,23 +692,36 @@ export const CertificatesTab = React.memo(function CertificatesTab({
 
             {/* Gated Download Action */}
             {isSelectedAttended ? (
-              <button
-                onClick={() => handleDownload()}
-                disabled={isGenerating || !selectedCertificate}
-                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-xs font-mono shadow-lg shadow-indigo-500/25 transition-all cursor-pointer disabled:opacity-50"
-              >
-                {isGenerating ? (
-                  <>
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>Rendering Canvas...</span>
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Download Full-Res Certificate (PNG)</span>
-                  </>
-                )}
-              </button>
+              <div className="space-y-2.5">
+                <button
+                  onClick={() => handleDownload()}
+                  disabled={isGenerating || !selectedCertificate}
+                  className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-xs font-mono shadow-lg shadow-indigo-500/25 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {isGenerating ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Rendering Canvas...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Download Full-Res Certificate (PNG)</span>
+                    </>
+                  )}
+                </button>
+
+                <a
+                  href={`/verify?id=${encodeURIComponent(`CJ-CERT-${selectedCertificate._id.slice(-6).toUpperCase()}`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl border border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold text-xs font-mono transition-all"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Verify on Public Credential Ledger</span>
+                  <ExternalLink className="w-3 h-3 ml-1" />
+                </a>
+              </div>
             ) : (
               <div className="space-y-3">
                 <button

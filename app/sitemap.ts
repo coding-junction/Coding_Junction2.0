@@ -14,13 +14,19 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 1.0,
     },
     {
-      url: `${baseUrl}/Overview`,
+      url: `${baseUrl}/Events`,
       lastModified,
-      changeFrequency: 'monthly',
-      priority: 0.8,
+      changeFrequency: 'weekly',
+      priority: 0.9,
     },
     {
-      url: `${baseUrl}/Events`,
+      url: `${baseUrl}/Blog`,
+      lastModified,
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/Projects`,
       lastModified,
       changeFrequency: 'monthly',
       priority: 0.8,
@@ -38,22 +44,41 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.8,
     },
     {
-      url: `${baseUrl}/App`,
+      url: `${baseUrl}/contact`,
       lastModified,
       changeFrequency: 'monthly',
+      priority: 0.7,
+    },
+    {
+      url: `${baseUrl}/verify`,
+      lastModified,
+      changeFrequency: 'weekly',
       priority: 0.8,
     },
     {
       url: `${baseUrl}/CommunityPartners`,
       lastModified,
       changeFrequency: 'monthly',
-      priority: 0.8,
+      priority: 0.7,
     },
     {
-      url: `${baseUrl}/UpcomingEvent/Event`,
+      url: `${baseUrl}/mobile-app`,
       lastModified,
       changeFrequency: 'monthly',
-      priority: 0.8,
+      priority: 0.7,
+    },
+    {
+      url: `${baseUrl}/privacy`,
+      lastModified,
+      changeFrequency: 'yearly',
+      priority: 0.3,
+    },
+    {
+      url: `${baseUrl}/terms`,
+      lastModified,
+      changeFrequency: 'yearly',
+      priority: 0.3,
     },
   ];
 }
+

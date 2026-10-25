@@ -130,13 +130,13 @@ export function CertificateModal({ isOpen, onClose, recipientName }: Certificate
                 {/* Signature 2 */}
                 <div className="text-center">
                   <div className="font-serif italic text-amber-300 text-base sm:text-lg font-medium">
-                    Faculty Coordinator
+                    Executive Board
                   </div>
                   <div className="w-32 mx-auto h-px bg-white/20 my-1" />
                   <p className="text-[10px] sm:text-xs text-white/50 uppercase tracking-wider">
-                    Dept. of CSE & IT
+                    Community Lead
                   </p>
-                  <p className="text-[9px] text-white/30">UIT, Burdwan</p>
+                  <p className="text-[9px] text-white/30">Coding Junction Club</p>
                 </div>
               </div>
 

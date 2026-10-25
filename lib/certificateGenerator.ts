@@ -267,14 +267,14 @@ function drawDefaultTemplate(
   ctx.font = "18px 'Inter', sans-serif";
   ctx.fillStyle = "#94a3b8";
   ctx.textAlign = "center";
-  ctx.fillText("Faculty Coordinator", 310, height - 170);
+  ctx.fillText("Lead Coordinator", 310, height - 170);
 
   ctx.beginPath();
   ctx.moveTo(width - 460, height - 200);
   ctx.lineTo(width - 160, height - 200);
   ctx.stroke();
 
-  ctx.fillText("President, Coding Junction", width - 310, height - 170);
+  ctx.fillText("Coding Junction Club", width - 310, height - 170);
 
   ctx.restore();
 }

@@ -25,6 +25,8 @@ import {
   Clock,
 } from "lucide-react";
 import { VerifiedCollegeData } from "./CollegeVerificationModal";
+import { toPng } from "html-to-image";
+import QRCode from "qrcode";
 
 export type DomainKey = "web" | "dsa" | "aiml" | "android" | "cpp";
 
@@ -151,8 +153,37 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
   const [copied, setCopied] = useState(false);
   const [shareSuccess, setShareSuccess] = useState(false);
   const [isDownloaded, setIsDownloaded] = useState(false);
-
+  const [avatarDataUrl, setAvatarDataUrl] = useState<string>("");
   const cardRef = useRef<HTMLDivElement>(null);
+  const frontCardRef = useRef<HTMLDivElement>(null);
+  const backCardRef = useRef<HTMLDivElement>(null);
+
+  // Pre-fetch avatar to base64 data URL to guarantee zero CORS issues during card download
+  useEffect(() => {
+    let active = true;
+    const url = user?.imageUrl;
+    if (!url) return;
+
+    fetch(url)
+      .then((res) => {
+        if (!res.ok) throw new Error("Avatar fetch failed");
+        return res.blob();
+      })
+      .then((blob) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (active && typeof reader.result === "string") {
+            setAvatarDataUrl(reader.result);
+          }
+        };
+        reader.readAsDataURL(blob);
+      })
+      .catch(() => {});
+
+    return () => {
+      active = false;
+    };
+  }, [user?.imageUrl]);
 
   // Initialize domain from Clerk metadata or localStorage
   useEffect(() => {
@@ -199,6 +230,26 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
   const rawId = user?.id || "CJ-DEV";
   const memberId = `CJ-2026-${rawId.replace("user_", "").slice(0, 6).toUpperCase()}`;
   const username = user?.username || user?.firstName?.toLowerCase() || "dev";
+
+  const [qrDataUrl, setQrDataUrl] = useState<string>("");
+
+  // Generate verified QR code image for official verification link
+  useEffect(() => {
+    const verifyUrl = typeof window !== "undefined"
+      ? `${window.location.origin}/verify?id=${encodeURIComponent(memberId)}`
+      : `https://coding-junction.in/verify?id=${memberId}`;
+
+    QRCode.toDataURL(verifyUrl, {
+      width: 140,
+      margin: 1,
+      color: {
+        dark: "#000000",
+        light: "#ffffff",
+      },
+    })
+      .then((url) => setQrDataUrl(url))
+      .catch(() => {});
+  }, [memberId]);
 
   // Subtle 3D tilt tracking
   const mouseX = useMotionValue(0);
@@ -283,10 +334,48 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
     }
   };
 
-  // Ultra-Cool High-Resolution ID Card Canvas Generator (1400 x 860 Retina)
+  // Ultra-HD 3x Retina Holographic Pass Exporter (Direct Single-Face Snapshot)
   const handleDownloadCard = async (e?: React.MouseEvent) => {
     e?.stopPropagation();
     try {
+      setIsDownloaded(false);
+
+      // Snapshot the specific face element directly so backface elements NEVER leak or overlap
+      const targetElement = isFlipped ? backCardRef.current : frontCardRef.current;
+      if (!targetElement) return;
+
+      // Temporarily level tilt spring for flat, crisp rectangular export
+      mouseX.set(0);
+      mouseY.set(0);
+      await new Promise((r) => setTimeout(r, 120));
+
+      let dataUrl = "";
+      try {
+        dataUrl = await toPng(targetElement, {
+          pixelRatio: 3, // 3x ultra-sharp retina export
+          cacheBust: true,
+          filter: (node) => {
+            // Filter out the interactive "Flip" button from official printed pass
+            if (node instanceof HTMLElement && node.classList.contains("export-hide")) {
+              return false;
+            }
+            return true;
+          },
+        });
+      } catch (domErr) {
+        console.warn("DOM snapshot failed, falling back to canvas:", domErr);
+      }
+
+      if (dataUrl) {
+        const link = document.createElement("a");
+        link.download = `${memberId}_Official_${isFlipped ? "Back" : "Pass"}.png`;
+        link.href = dataUrl;
+        link.click();
+        setIsDownloaded(true);
+        setTimeout(() => setIsDownloaded(false), 2500);
+        return;
+      }
+
       const canvas = document.createElement("canvas");
       canvas.width = 1400;
       canvas.height = 860;
@@ -855,6 +944,7 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
                     CARD FRONT (Clean Minimalist Code Vibe)
                    ────────────────────────────────────────── */}
                 <div
+                  ref={frontCardRef}
                   style={{
                     backfaceVisibility: "hidden",
                     WebkitBackfaceVisibility: "hidden",
@@ -867,6 +957,16 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
                       : "border-white/[0.12]"
                   } bg-[#0a0b12] text-white shadow-xl`}
                 >
+                  {/* Iridescent Rainbow Holographic Foil Layer */}
+                  <div
+                    style={{
+                      background: "linear-gradient(115deg, transparent 15%, rgba(239, 68, 68, 0.35) 30%, rgba(99, 102, 241, 0.4) 50%, rgba(16, 185, 129, 0.4) 70%, rgba(234, 179, 8, 0.35) 85%, transparent 100%)",
+                      opacity: 0.4,
+                      mixBlendMode: "color-dodge",
+                    }}
+                    className="absolute inset-0 pointer-events-none rounded-2xl z-20"
+                  />
+
                   {/* Subtle Grid Watermark */}
                   <div
                     className="absolute inset-0 opacity-[0.04] pointer-events-none"
@@ -900,58 +1000,79 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
                     )}
                   </div>
 
-                  {/* 2. Developer Bio & Avatar */}
-                  <div className="relative z-10 flex items-center gap-3.5 my-auto">
-                    <div className="relative flex-shrink-0">
-                      <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-xl overflow-hidden border border-white/20 bg-slate-900 shadow-md">
-                        {user?.imageUrl ? (
-                          <Image
-                            src={user.imageUrl}
-                            alt={user.fullName || "Member"}
-                            width={56}
-                            height={56}
-                            className="w-full h-full object-cover"
-                          />
+                  {/* 2. Developer Bio & Avatar with Chip */}
+                  <div className="relative z-10 flex items-center justify-between gap-3 my-auto">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="relative flex-shrink-0">
+                        <div className="p-0.5 rounded-xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 shadow-md">
+                          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden bg-slate-900">
+                            {avatarDataUrl || user?.imageUrl ? (
+                              <img
+                                src={avatarDataUrl || user?.imageUrl}
+                                alt={user?.fullName || "Member"}
+                                crossOrigin="anonymous"
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center bg-slate-800 text-slate-300 font-mono font-bold text-base">
+                                {user?.firstName?.[0] || ">_"}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        {isExpired ? (
+                          <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white flex items-center justify-center border border-[#0a0b12]" title="Expired">
+                            <AlertTriangle className="w-2.5 h-2.5" />
+                          </div>
+                        ) : isVerified ? (
+                          <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center border border-[#0a0b12]" title="AICTE / UIT Burdwan Verified">
+                            <ShieldCheck className="w-2.5 h-2.5" />
+                          </div>
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-slate-800 text-slate-300 font-mono font-bold text-base">
-                            {user?.firstName?.[0] || ">_"}
+                          <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-cyan-500 text-white flex items-center justify-center border border-[#0a0b12]" title="Member">
+                            <Code2 className="w-2.5 h-2.5" />
                           </div>
                         )}
                       </div>
-                      {isExpired ? (
-                        <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white flex items-center justify-center border border-[#0a0b12]" title="Expired">
-                          <AlertTriangle className="w-2.5 h-2.5" />
-                        </div>
-                      ) : isVerified ? (
-                        <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center border border-[#0a0b12]" title="AICTE Verified">
-                          <ShieldCheck className="w-2.5 h-2.5" />
-                        </div>
-                      ) : (
-                        <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-cyan-500 text-white flex items-center justify-center border border-[#0a0b12]" title="Member">
-                          <Code2 className="w-2.5 h-2.5" />
-                        </div>
-                      )}
+
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-bold text-sm sm:text-base text-white truncate tracking-tight font-mono">
+                          {user?.fullName || user?.firstName || "Community Member"}
+                        </h3>
+                        <p className="text-[11px] text-slate-300 font-mono flex items-center gap-1 mt-0.5">
+                          <span className="text-slate-500">//</span>
+                          <span className={`font-semibold ${currentDomainMeta?.accent || "text-indigo-400"}`}>
+                            {currentDomainMeta?.role || "Software Developer"}
+                          </span>
+                        </p>
+                        <p className="text-[10px] text-slate-400 font-mono truncate mt-0.5">
+                          {verificationData?.collegeName ? (
+                            <span className="text-slate-300 truncate">
+                              {verificationData.collegeName}
+                            </span>
+                          ) : (
+                            <span className="text-slate-500">UIT Burdwan • Coding Junction</span>
+                          )}
+                        </p>
+                      </div>
                     </div>
 
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-sm sm:text-base text-white truncate tracking-tight font-mono">
-                        {user?.fullName || user?.firstName || "Community Member"}
-                      </h3>
-                      <p className="text-[11px] text-slate-300 font-mono flex items-center gap-1 mt-0.5">
-                        <span className="text-slate-500">//</span>
-                        <span className={`font-semibold ${currentDomainMeta?.accent || "text-indigo-400"}`}>
-                          {currentDomainMeta?.role || "Software Developer"}
+                    {/* Golden Cyber Chip on Right */}
+                    <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                      <div className="w-9 h-7 rounded-md bg-gradient-to-br from-amber-300 via-amber-400 to-amber-600 border border-amber-200/50 flex flex-col justify-between p-0.5 shadow-sm">
+                        <div className="h-0.5 w-full bg-amber-800/40 rounded-full" />
+                        <div className="flex justify-between">
+                          <div className="w-1.5 h-1.5 rounded-full border border-amber-800/40" />
+                          <div className="w-1.5 h-1.5 rounded-full border border-amber-800/40" />
+                        </div>
+                        <div className="h-0.5 w-full bg-amber-800/40 rounded-full" />
+                      </div>
+                      {isVerified && (
+                        <span className="inline-flex items-center gap-1 text-[8px] font-mono font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 rounded-full">
+                          <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
+                          <span>AUTHENTIC</span>
                         </span>
-                      </p>
-                      <p className="text-[10px] text-slate-400 font-mono truncate mt-0.5">
-                        {verificationData?.collegeName ? (
-                          <span className="text-slate-300 truncate">
-                            {verificationData.collegeName}
-                          </span>
-                        ) : (
-                          <span className="text-slate-500">Student Developer • Coding Junction</span>
-                        )}
-                      </p>
+                      )}
                     </div>
                   </div>
 
@@ -987,7 +1108,7 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-1 text-[9px] text-slate-400 hover:text-white bg-white/[0.04] px-2 py-1 rounded border border-white/[0.06] transition-colors">
+                    <div className="export-hide flex items-center gap-1 text-[9px] text-slate-400 hover:text-white bg-white/[0.04] px-2 py-1 rounded border border-white/[0.06] transition-colors">
                       <RotateCw className="w-2.5 h-2.5 text-indigo-400" />
                       <span>Flip</span>
                     </div>
@@ -998,6 +1119,7 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
                     CARD BACK (Clean Terminal Verification)
                    ────────────────────────────────────────── */}
                 <div
+                  ref={backCardRef}
                   style={{
                     backfaceVisibility: "hidden",
                     WebkitBackfaceVisibility: "hidden",
@@ -1024,44 +1146,17 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
 
                   {/* QR & Diagnostics */}
                   <div className="flex items-center justify-between gap-4 my-auto">
-                    <div className="bg-white p-2 rounded-xl shadow-md flex-shrink-0">
-                      <svg
-                        viewBox="0 0 100 100"
-                        className="w-18 h-18 text-slate-900"
-                        fill="currentColor"
-                      >
-                        <rect x="5" y="5" width="28" height="28" rx="3" />
-                        <rect x="9" y="9" width="20" height="20" rx="1.5" fill="white" />
-                        <rect x="13" y="13" width="12" height="12" rx="1" />
-
-                        <rect x="67" y="5" width="28" height="28" rx="3" />
-                        <rect x="71" y="9" width="20" height="20" rx="1.5" fill="white" />
-                        <rect x="75" y="13" width="12" height="12" rx="1" />
-
-                        <rect x="5" y="67" width="28" height="28" rx="3" />
-                        <rect x="9" y="71" width="20" height="20" rx="1.5" fill="white" />
-                        <rect x="13" y="75" width="12" height="12" rx="1" />
-
-                        <rect x="38" y="10" width="8" height="8" rx="1" />
-                        <rect x="50" y="10" width="8" height="8" rx="1" />
-                        <rect x="38" y="24" width="8" height="8" rx="1" />
-                        <rect x="50" y="24" width="8" height="8" rx="1" />
-
-                        <rect x="10" y="38" width="8" height="8" rx="1" />
-                        <rect x="24" y="38" width="8" height="8" rx="1" />
-                        <rect x="38" y="38" width="24" height="24" rx="2" />
-                        <rect x="67" y="38" width="8" height="8" rx="1" />
-                        <rect x="82" y="38" width="8" height="8" rx="1" />
-
-                        <rect x="38" y="68" width="8" height="8" rx="1" />
-                        <rect x="50" y="68" width="8" height="8" rx="1" />
-                        <rect x="38" y="82" width="8" height="8" rx="1" />
-                        <rect x="50" y="82" width="8" height="8" rx="1" />
-                        <rect x="67" y="68" width="23" height="8" rx="1" />
-                        <rect x="82" y="82" width="8" height="8" rx="1" />
-
-                        <rect x="42" y="42" width="16" height="16" rx="2" fill="#4f46e5" />
-                      </svg>
+                    <div className="bg-white p-1.5 rounded-xl shadow-md flex-shrink-0">
+                      {qrDataUrl ? (
+                        <img
+                          src={qrDataUrl}
+                          alt={`Verify ${memberId}`}
+                          className="w-16 h-16 rounded"
+                          style={{ width: 64, height: 64 }}
+                        />
+                      ) : (
+                        <div className="w-16 h-16 bg-slate-100 rounded animate-pulse" />
+                      )}
                     </div>
 
                     <div className="flex-1 min-w-0 font-mono text-[10px] space-y-1 text-slate-300">
@@ -1091,7 +1186,7 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
                   {/* Back Footer */}
                   <div className="pt-2 border-t border-white/[0.08] flex items-center justify-between text-[9px] font-mono text-slate-500">
                     <span>coding-junction.in</span>
-                    <div className="flex items-center gap-1 text-slate-400">
+                    <div className="export-hide flex items-center gap-1 text-slate-400">
                       <RotateCw className="w-2.5 h-2.5" />
                       <span>Click to flip front</span>
                     </div>

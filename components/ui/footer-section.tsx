@@ -21,12 +21,38 @@ import { useTheme } from "next-themes"
 function Footerdemo() {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = React.useState(false)
+  const [newsletterEmail, setNewsletterEmail] = React.useState("")
+  const [newsletterStatus, setNewsletterStatus] = React.useState<"idle" | "sending" | "success" | "error">("idle")
 
   React.useEffect(() => {
     setMounted(true)
   }, [])
 
   const isDarkMode = theme === "dark"
+
+  const handleNewsletterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newsletterEmail || newsletterStatus === "sending") return
+    setNewsletterStatus("sending")
+    try {
+      const res = await fetch("/api/newsletter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: newsletterEmail }),
+      })
+      if (res.ok) {
+        setNewsletterStatus("success")
+        setNewsletterEmail("")
+        setTimeout(() => setNewsletterStatus("idle"), 5000)
+      } else {
+        setNewsletterStatus("error")
+        setTimeout(() => setNewsletterStatus("idle"), 4000)
+      }
+    } catch {
+      setNewsletterStatus("error")
+      setTimeout(() => setNewsletterStatus("idle"), 4000)
+    }
+  }
 
   return (
     <footer className="relative w-full max-w-full overflow-hidden border-t border-transparent bg-background text-foreground transition-colors duration-300 pb-24 md:pb-0">
@@ -37,23 +63,37 @@ function Footerdemo() {
           <div className="relative">
             <h2 className="mb-4 text-3xl font-bold tracking-tight">Stay Connected</h2>
             <p className="mb-6 text-muted-foreground">
-            If you are thinking or interested in joining the club or want to know more about us, connect with us by dropping your Email-ID with us. We will be glad to get in touch with you.
+              If you are thinking or interested in joining the club or want to know more about us, connect with us by dropping your Email-ID with us. We will be glad to get in touch with you.
             </p>
-            <form className="relative">
+            <form className="relative" onSubmit={handleNewsletterSubmit}>
               <Input
                 type="email"
                 placeholder="Enter your email"
+                value={newsletterEmail}
+                onChange={(e) => setNewsletterEmail(e.target.value)}
                 className="pr-12 backdrop-blur-sm"
+                required
               />
               <Button
                 type="submit"
                 size="icon"
-                className="absolute right-1 top-1 h-8 w-8 rounded-full bg-primary text-primary-foreground transition-transform hover:scale-105"
+                disabled={newsletterStatus === "sending"}
+                className="absolute right-1 top-1 h-8 w-8 rounded-full bg-primary text-primary-foreground transition-transform hover:scale-105 disabled:opacity-60"
               >
-                <Send className="h-4 w-4" />
+                {newsletterStatus === "sending" ? (
+                  <div className="h-4 w-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
                 <span className="sr-only">Subscribe</span>
               </Button>
             </form>
+            {newsletterStatus === "success" && (
+              <p className="mt-2 text-xs text-emerald-600 dark:text-emerald-400 font-medium">🎉 Subscribed! Check your email for a welcome message.</p>
+            )}
+            {newsletterStatus === "error" && (
+              <p className="mt-2 text-xs text-red-600 dark:text-red-400 font-medium">Failed to subscribe. Please try again.</p>
+            )}
             <div className="absolute -right-4 top-0 h-24 w-24 rounded-full bg-primary/10 blur-2xl hidden md:block" />
           </div>
           <div>
@@ -65,12 +105,39 @@ function Footerdemo() {
               <Link href="/Events" className="block transition-colors hover:text-primary">
                 Events
               </Link>
+              <Link href="/Blog" className="block transition-colors hover:text-primary">
+                Blog
+              </Link>
+              <Link href="/Projects" className="block transition-colors hover:text-primary">
+                Projects
+              </Link>
               <Link href="/Team" className="block transition-colors hover:text-primary">
                 Team
               </Link>
               <Link href="/Gallery" className="block transition-colors hover:text-primary">
                 Gallery
               </Link>
+              <Link href="/contact" className="block transition-colors hover:text-primary">
+                Contact Us
+              </Link>
+              <Link href="/verify" className="block transition-colors hover:text-primary">
+                Verify Certificate
+              </Link>
+              <Link href="/Dashboard?tab=profile" className="block transition-colors hover:text-primary">
+                Official Member Pass
+              </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  if (typeof window !== "undefined") {
+                    window.dispatchEvent(new CustomEvent("cj:open-terminal"));
+                  }
+                }}
+                className="block transition-colors hover:text-primary"
+              >
+                {/* <span className="text-emerald-500 font-bold">&gt;_</span> */}
+                <span>Developer Terminal</span>
+              </button>
               <Link href="/CommunityPartners" className="block transition-colors hover:text-primary">
                 Community Partners
               </Link>

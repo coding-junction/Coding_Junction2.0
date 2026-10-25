@@ -70,6 +70,46 @@ const nextConfig: NextConfig = {
         hostname: "images.clerk.dev",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "api.dicebear.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "avatars.githubusercontent.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "raw.githubusercontent.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "media2.dev.to",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "media.dev.to",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "miro.medium.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "cdn-images-1.medium.com",
+        pathname: "/**",
+      },
     ],
   },
 };

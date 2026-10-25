@@ -178,3 +178,42 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* Print Stylesheet for Certificate Verification & Official Dockets */
+@media print {
+  /* Hide all global navigation, footers, search dialogs, and decorative chrome */
+  nav,
+  header,
+  footer,
+  aside,
+  [data-command-palette],
+  .print-hidden,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Reset document flow and background for crisp paper rendering */
+  html,
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 12pt;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Printable container takes center stage without web-specific clipping */
+  .printable-sheet {
+    box-shadow: none !important;
+    border: 2px solid #b45309 !important;
+    border-radius: 12px !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    padding: 24px !important;
+    margin: 0 auto !important;
+    max-width: 100% !important;
+    page-break-inside: avoid !important;
+  }
+}
